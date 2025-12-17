@@ -70,6 +70,8 @@ DotNetDllInvoker/
 *   `AssemblyLoader.cs` (Uses `AssemblyLoadContext` with `Resolving` hook)
 *   `MethodScanner.cs`
 *   `SignatureBuilder.cs` (Reconstructs C# signatures from metadata)
+*   `DecompilerService.cs` (Wraps ICSharpCode.Decompiler)
+*   `ILReader.cs` (Raw IL instruction parsing)
 *   `ReflectionFlagsProvider.cs` (Centralized flags)
 *   **Rule:** ❌ No Invoke() ❌ No instance creation.
 

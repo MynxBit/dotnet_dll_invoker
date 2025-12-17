@@ -1,3 +1,17 @@
+// File: src/DotNetDllInvoker.Reflection/DecompilerService.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Wraps the ICSharpCode.Decompiler to provide full C# source code generation.
+// This is used for the "Definition" tab in the UI.
+//
+// Depends on:
+// - ICSharpCode.Decompiler
+// - System.Reflection.Metadata
+//
+// Execution Risk:
+// Low. Only reads metadata, does not execute code.
+
 using System;
 using System.IO;
 using System.Reflection;

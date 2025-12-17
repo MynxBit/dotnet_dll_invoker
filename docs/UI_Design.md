@@ -13,9 +13,15 @@ It serves as a "Cockpit" for the backend engine.
 
 ### A. The Views (`src/DotNetDllInvoker.UI/Views`)
 1.  **MainWindow:** The shell. Grid-based layout.
-2.  **AssemblyExplorerView:** Left sidebar. TreeView or List of methods.
-3.  **MethodDetailView:** Right pane. Details of the selected method.
-4.  **ExecutionLogView:** Bottom pane. Real-time(ish) output status.
+2.  **Assembly Explorer:** Left pane. List of loaded DLLs.
+    *   **Context Menu:** "Dependencies" triggers Sidebar.
+3.  **Method Explorer:** Middle pane. List of methods.
+4.  **Method Cockpit:** Right pane.
+    *   **Header:** Dynamic "Invoke" (Play) button in Red.
+    *   **Inputs:** Auto-generated dynamic controls.
+    *   **Logs:** Bottom output console.
+    *   **Tabs:** "IL" (Instructions) and "DEFINITION" (Full Code).
+5.  **Dependency Sidebar:** Right-side overlay (Closable) showing resolution status.
 
 ### B. The ViewModels (`src/DotNetDllInvoker.UI/ViewModels`)
 *   **MainViewModel:** Orchestrator. Holds `ProjectState` wrapper.

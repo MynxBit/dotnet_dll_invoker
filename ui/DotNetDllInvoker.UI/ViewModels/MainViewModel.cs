@@ -1,3 +1,18 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/MainViewModel.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Main orchestration Logic for the UI.
+// Connects the View (MainWindow) to the Core Dispatcher.
+// Manages State (Active Assembly, Methods, Dependencies).
+//
+// Depends on:
+// - DotNetDllInvoker.Core.CommandDispatcher
+// - DotNetDllInvoker.Contracts
+//
+// Execution Risk:
+// Medium. Triggers invocation via Dispatcher.
+
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;

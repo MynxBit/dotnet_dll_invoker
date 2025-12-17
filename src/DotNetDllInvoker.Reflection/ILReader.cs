@@ -1,3 +1,16 @@
+// File: src/DotNetDllInvoker.Reflection/ILReader.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Parses raw byte arrays from method bodies into readable IL instructions.
+// Provides the "IL" tab content.
+//
+// Depends on:
+// - System.Reflection.Emit.OpCodes
+//
+// Execution Risk:
+// Low. Passive parsing only.
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
