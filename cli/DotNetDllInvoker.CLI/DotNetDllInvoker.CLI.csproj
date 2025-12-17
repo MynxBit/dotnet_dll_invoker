@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Core\DotNetDllInvoker.Core.csproj" />
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Contracts\DotNetDllInvoker.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Results\DotNetDllInvoker.Results.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

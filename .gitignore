@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.pdb
+*.cache
+Publish_*/
+test_dll/TestManagedDll/bin/
+test_dll/TestManagedDll/obj/
+TestManagedDll.dll
+dist/
+dist/*
+*.exe
+*.dll

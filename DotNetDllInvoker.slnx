@@ -1,0 +1,18 @@
+<Solution>
+  <Folder Name="/cli/">
+    <Project Path="cli/DotNetDllInvoker.CLI/DotNetDllInvoker.CLI.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/DotNetDllInvoker.Contracts/DotNetDllInvoker.Contracts.csproj" />
+    <Project Path="src/DotNetDllInvoker.Core/DotNetDllInvoker.Core.csproj" />
+    <Project Path="src/DotNetDllInvoker.Dependency/DotNetDllInvoker.Dependency.csproj" />
+    <Project Path="src/DotNetDllInvoker.Execution/DotNetDllInvoker.Execution.csproj" />
+    <Project Path="src/DotNetDllInvoker.Parameters/DotNetDllInvoker.Parameters.csproj" />
+    <Project Path="src/DotNetDllInvoker.Reflection/DotNetDllInvoker.Reflection.csproj" />
+    <Project Path="src/DotNetDllInvoker.Results/DotNetDllInvoker.Results.csproj" />
+    <Project Path="src/DotNetDllInvoker.Shared/DotNetDllInvoker.Shared.csproj" />
+  </Folder>
+  <Folder Name="/ui/">
+    <Project Path="ui/DotNetDllInvoker.UI/DotNetDllInvoker.UI.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\DotNetDllInvoker.Contracts\DotNetDllInvoker.Contracts.csproj" />
+    <ProjectReference Include="..\DotNetDllInvoker.Results\DotNetDllInvoker.Results.csproj" />
+    <ProjectReference Include="..\DotNetDllInvoker.Shared\DotNetDllInvoker.Shared.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

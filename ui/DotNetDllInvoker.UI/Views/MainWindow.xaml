@@ -1,0 +1,265 @@
+<Window x:Class="DotNetDllInvoker.UI.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:DotNetDllInvoker.UI.ViewModels"
+        mc:Ignorable="d"
+        Title="DotNet DLL Invoker (Cockpit)" Height="700" Width="1000">
+    
+    <Window.DataContext>
+        <vm:MainViewModel/>
+    </Window.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <!-- Toolbar -->
+            <RowDefinition Height="*"/>   <!-- Content -->
+            <RowDefinition Height="Auto"/> <!-- Status -->
+        </Grid.RowDefinitions>
+        
+        <!-- Toolbar -->
+        <ToolBarTray Grid.Row="0" Background="{StaticResource DarkPanel}">
+            <ToolBar Background="{StaticResource DarkPanel}">
+                <Button Command="{Binding LoadDllCommand}" Content=" Load DLL... " Background="Transparent" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
+                <Separator Background="#444" Margin="5,0"/>
+                <Button Command="{Binding InvokeAllCommand}" Content=" ▶ Invoke All " Background="#C0392B" Foreground="White" FontWeight="Bold" BorderThickness="0" ToolTip="DANGER: Invoke all methods sequentially"/>
+            </ToolBar>
+        </ToolBarTray>
+        
+        <!-- Main Content -->
+        <Grid Grid.Row="1">
+             <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="250" /> <!-- 1. DLL Manager -->
+                <ColumnDefinition Width="300" /> <!-- 2. Method List -->
+                <ColumnDefinition Width="*" />   <!-- 3. Cockpit -->
+            </Grid.ColumnDefinitions>
+            
+            <!-- Panel 1: DLL Manager -->
+            <Grid Grid.Column="0" Background="#252526">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Text="LOADED ASSEMBLIES" FontWeight="Bold" Foreground="#AAAAAA" Margin="10,5"/>
+                
+                <ListView Grid.Row="1" ItemsSource="{Binding LoadedAssemblies}" SelectedItem="{Binding SelectedAssembly}" Background="Transparent" BorderThickness="0" Foreground="White">
+                    <ListView.ItemContainerStyle>
+                        <Style TargetType="ListViewItem">
+                            <!-- Helper for ContextMenu binding -->
+                            <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                            <Setter Property="ContextMenu">
+                                <Setter.Value>
+                                    <ContextMenu>
+                                        <!-- Bind to MainViewModel via PlacementTarget.Tag -->
+                                        <MenuItem Header="Dependencies" 
+                                                  Command="{Binding PlacementTarget.Tag.ShowDependenciesCommand, RelativeSource={RelativeSource AncestorType=ContextMenu}}" 
+                                                  CommandParameter="{Binding}"/>
+                                    </ContextMenu>
+                                </Setter.Value>
+                            </Setter>
+                            <!-- Visuals -->
+                            <Setter Property="Background" Value="Transparent"/>
+                            <Setter Property="Foreground" Value="White"/>
+                        </Style>
+                    </ListView.ItemContainerStyle>
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="5">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" FontSize="14"/>
+                                <TextBlock Text="{Binding FilePath}" Foreground="#888888" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+            
+            <!-- Panel 2: Method List -->
+            <Grid Grid.Column="1" Background="{StaticResource DarkPanel}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                
+                <TextBlock Text="METHODS" FontWeight="Bold" Foreground="#AAAAAA" Margin="10,5"/>
+
+                <ListView Grid.Row="1" ItemsSource="{Binding Methods}" SelectedItem="{Binding SelectedMethod}" Background="Transparent" BorderThickness="0">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="5">
+                                <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="White" FontSize="14"/>
+                                <TextBlock Text="{Binding Signature}" Foreground="#AAAAAA" FontSize="11" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+            </Grid>
+            
+            <!-- Panel 3: Cockpit (Execution) -->
+            <Grid Grid.Column="2" Margin="20" Background="#1E1E1E">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" /> <!-- Header -->
+                    <RowDefinition Height="*" />    <!-- Inputs -->
+                    <RowDefinition Height="Auto" /> <!-- Action -->
+                    <RowDefinition Height="*" />    <!-- Output -->
+                </Grid.RowDefinitions>
+
+                <!-- 0: Header -->
+                <Grid Grid.Row="0" Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="{Binding SelectedMethod.Name, TargetNullValue='Select a Method'}" FontSize="24" FontWeight="Bold" Foreground="{StaticResource AccentColor}"/>
+                        <TextBlock Text="{Binding SelectedMethod.Signature}" FontSize="14" FontFamily="Consolas" Foreground="#D4D4D4"/>
+                        <TextBlock Text="{Binding SelectedAssembly.Name, StringFormat='Assembly: {0}'}" FontSize="12" Foreground="#888888" Margin="0,5,0,0"/>
+                    </StackPanel>
+                    
+                    <Button Grid.Column="1" Content="▶" 
+                            Command="{Binding SelectedMethod.InvokeCommand}" 
+                            Visibility="{Binding IsMethodSelected, Converter={StaticResource BoolToVis}, FallbackValue=Collapsed}"
+                            Background="#CC2D2D" Foreground="White" FontSize="20" FontWeight="Bold" Width="50" Height="50" VerticalAlignment="Top" Margin="15,0,0,0"
+                            ToolTip="Invoke Method"/>
+                </Grid>
+
+                <!-- 1: Dynamic Inputs -->
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,20">
+                    <ItemsControl ItemsSource="{Binding SelectedMethod.Parameters}" ItemTemplateSelector="{StaticResource ParameterSelector}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <!-- 2: Action Bar (Removed - moved to Header) -->
+                <!-- <Button Grid.Row="2" ... /> -->
+
+                <!-- 3: Output / Definition Tabs -->
+                <TabControl Grid.Row="3" Margin="0,20,0,0" Background="Transparent" BorderThickness="0">
+                    <TabControl.Resources>
+                        <Style TargetType="TabItem">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="TabItem">
+                                        <Border Name="Border" Background="#2D2D30" Padding="12,6" Margin="0,0,2,0">
+                                            <ContentPresenter x:Name="ContentSite" VerticalAlignment="Center" HorizontalAlignment="Center" ContentSource="Header" RecognizesAccessKey="True"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsSelected" Value="True">
+                                                <Setter TargetName="Border" Property="Background" Value="#007ACC"/> <!-- Active Blue -->
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Trigger>
+                                            <Trigger Property="IsSelected" Value="False">
+                                                <Setter TargetName="Border" Property="Background" Value="#333333"/>
+                                                <Setter Property="Foreground" Value="#AAAAAA"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </TabControl.Resources>
+                    
+                    <TabItem Header="DEBUG OUTPUT">
+                        <Grid>
+                             <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="*"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            
+                            <TextBlock Grid.Row="0" Text="Execution Result:" FontWeight="Bold" Margin="0,5,0,5" Foreground="#AAAAAA"/>
+                            
+                            <TextBox Grid.Row="1" Text="{Binding LastResult.OutputText, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" Background="#111111" Foreground="#CCCCCC" BorderThickness="0" MinHeight="100"/>
+                            
+                            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="0,5,0,0">
+                                <TextBlock Text="Return Value: " FontWeight="Bold" Foreground="#AAAAAA"/>
+                                <TextBlock Text="{Binding LastResult.ResultValue}" FontFamily="Consolas" Foreground="Yellow"/>
+                                <TextBlock Text="{Binding LastResult.Duration, StringFormat=' (Time: {0})'}" Margin="10,0,0,0" Foreground="#888888"/>
+                            </StackPanel>
+                        </Grid>
+                    </TabItem>
+                    
+                    <TabItem Header="IL">
+                        <TextBox Text="{Binding SelectedMethod.ILCode, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" Background="#111111" Foreground="#CE9178" BorderThickness="0" MinHeight="100"/>
+                    </TabItem>
+                    
+                    <TabItem Header="DEFINITION">
+                         <TextBox Text="{Binding SelectedMethod.CSCode, Mode=OneWay}" IsReadOnly="True" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" Background="#111111" Foreground="#569CD6" BorderThickness="0" MinHeight="100"/>
+                    </TabItem>
+                </TabControl>
+            </Grid>
+            
+            <!-- Dependency Sidebar (Right Overlay) -->
+            <Grid Grid.Column="2" Width="300" HorizontalAlignment="Right" Background="#2D2D30" 
+                  Visibility="{Binding IsDependencyPanelVisible, Converter={StaticResource BoolToVis}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Border BorderBrush="#3E3E42" BorderThickness="0,0,0,1" Padding="10">
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Content="✕" Command="{Binding CloseDependencyPanelCommand}" Background="Transparent" Foreground="White" BorderThickness="0" FontWeight="Bold"/>
+                        <TextBlock Text="Dependencies" FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                    </DockPanel>
+                </Border>
+                <ListView Grid.Row="1" ItemsSource="{Binding Dependencies}" Background="Transparent" BorderThickness="0" Foreground="White">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="5">
+                                <TextBlock Text="{Binding AssemblyName.Name}" FontWeight="Bold"/>
+                                <TextBlock Text="{Binding Status}" FontSize="10">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Status}" Value="Resolved">
+                                                    <Setter Property="Foreground" Value="LightGreen"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="Unresolved">
+                                                    <Setter Property="Foreground" Value="#FF7777"/> <!-- Light Red -->
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Status}" Value="LoadError">
+                                                    <Setter Property="Foreground" Value="Red"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{Binding ResolvedPath}" FontSize="9" Foreground="Gray" TextTrimming="CharacterEllipsis"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                
+                <!-- Empty State Message -->
+                <TextBlock Grid.Row="1" Text="No External Dependencies" Foreground="#555" VerticalAlignment="Center" HorizontalAlignment="Center" FontStyle="Italic">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Dependencies.Count}" Value="0">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+        </Grid>
+
+        <!-- Status Bar -->
+        <StatusBar Grid.Row="2" Background="{StaticResource DarkPanel}" Foreground="White">
+            <StatusBarItem>
+                <TextBlock Text="{Binding StatusText}"/>
+            </StatusBarItem>
+            <StatusBarItem HorizontalAlignment="Right">
+                <ProgressBar Width="100" Height="10" IsIndeterminate="True" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"/>
+            </StatusBarItem>
+        </StatusBar>
+    </Grid>
+</Window>

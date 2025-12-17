@@ -1,0 +1,11 @@
+// File: tests/DotNetDllInvoker.Tests/DependencyTestExtensions.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Dummy test content (for verifying the fix logic idea, though running tests requires the project).
+// Just creating this as a note for verification.
+
+namespace DotNetDllInvoker.Tests;
+
+// This file is a placeholder to indicate where proper integration tests 
+// for the dependency resolver would go.

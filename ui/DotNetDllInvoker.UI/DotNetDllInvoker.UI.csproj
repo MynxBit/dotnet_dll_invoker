@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Core\DotNetDllInvoker.Core.csproj" />
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Contracts\DotNetDllInvoker.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Results\DotNetDllInvoker.Results.csproj" />
+    <ProjectReference Include="..\..\src\DotNetDllInvoker.Shared\DotNetDllInvoker.Shared.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+
+</Project>
