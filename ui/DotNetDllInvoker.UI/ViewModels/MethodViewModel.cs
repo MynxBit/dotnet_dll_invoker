@@ -1,5 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using System.Windows.Input;
@@ -11,18 +12,30 @@ public class MethodViewModel : ViewModelBase
 {
     private readonly MethodBase _method;
     private readonly Func<MethodViewModel, Task> _invokeCallback;
+    private readonly Assembly? _loadedAssembly;
 
-    public MethodViewModel(MethodBase method, Func<MethodViewModel, Task> invokeCallback)
+    public MethodViewModel(MethodBase method, Func<MethodViewModel, Task> invokeCallback, Assembly? loadedAssembly = null)
     {
         _method = method ?? throw new ArgumentNullException(nameof(method));
         _invokeCallback = invokeCallback;
+        _loadedAssembly = loadedAssembly;
 
         // Initialize Parameters
         Parameters = new ObservableCollection<ParameterViewModel>();
-        foreach (var p in _method.GetParameters())
+        
+        // Initialize Generic Type Arguments
+        GenericTypeArguments = new ObservableCollection<GenericTypeArgumentViewModel>();
+        
+        if (IsGenericMethod && _method is MethodInfo methodInfo)
         {
-            Parameters.Add(CreateParameterVM(p));
+            foreach (var typeParam in methodInfo.GetGenericArguments())
+            {
+                GenericTypeArguments.Add(new GenericTypeArgumentViewModel(typeParam, _loadedAssembly));
+            }
         }
+        
+        // Build parameters (for generic methods, we'll rebuild after type resolution)
+        RebuildParameters();
 
         InvokeCommand = new RelayCommand(ExecuteInvoke, CanExecuteInvoke);
     }
@@ -32,11 +45,48 @@ public class MethodViewModel : ViewModelBase
     public string ReturnType => (_method as MethodInfo)?.ReturnType.Name ?? "void";
     
     public ObservableCollection<ParameterViewModel> Parameters { get; }
+    
+    /// <summary>
+    /// Type arguments for generic methods (e.g., T, TResult)
+    /// </summary>
+    public ObservableCollection<GenericTypeArgumentViewModel> GenericTypeArguments { get; }
+    
+    /// <summary>
+    /// True if this is a generic method definition (e.g., Method<T>)
+    /// </summary>
+    public bool IsGenericMethod => (_method as MethodInfo)?.IsGenericMethodDefinition == true;
 
     public ICommand InvokeCommand { get; }
 
     public string ILCode => BuildIL(_method);
     public string CSCode => BuildCSharpDeclaration(_method);
+    
+    /// <summary>
+    /// Returns the resolved MethodInfo with concrete type arguments applied.
+    /// For non-generic methods, returns the original method.
+    /// </summary>
+    public MethodBase ResolvedMethod
+    {
+        get
+        {
+            if (!IsGenericMethod || _method is not MethodInfo methodInfo)
+                return _method;
+
+            var typeArgs = GenericTypeArguments
+                .Select(g => g.SelectedType ?? typeof(object))
+                .ToArray();
+
+            try
+            {
+                return methodInfo.MakeGenericMethod(typeArgs);
+            }
+            catch
+            {
+                // If type constraints fail, return original (will fail at invoke time with clear error)
+                return _method;
+            }
+        }
+    }
     
     private string BuildIL(MethodBase method)
     {
@@ -68,14 +118,50 @@ public class MethodViewModel : ViewModelBase
     }
 
     private bool CanExecuteInvoke(object? obj) => true; // Could lock if busy
+    
+    private void RebuildParameters()
+    {
+        Parameters.Clear();
+        
+        // Use ResolvedMethod for generic methods to get concrete parameter types
+        var methodToInspect = IsGenericMethod ? ResolvedMethod : _method;
+        
+        foreach (var p in methodToInspect.GetParameters())
+        {
+            Parameters.Add(CreateParameterVM(p));
+        }
+    }
 
     private ParameterViewModel CreateParameterVM(ParameterInfo p)
     {
-        if (p.ParameterType == typeof(int)) return new IntParameterViewModel(p);
-        if (p.ParameterType == typeof(bool)) return new BoolParameterViewModel(p);
+        var paramType = p.ParameterType;
         
-        // Default to String for everything else (for V1 simplicity)
-        // Complex objects would use a specialized 'JsonObjectParameterViewModel' later
+        if (paramType == typeof(int)) return new IntParameterViewModel(p);
+        if (paramType == typeof(bool)) return new BoolParameterViewModel(p);
+        if (paramType.IsEnum) return new EnumParameterViewModel(p);
+        if (IsCollectionType(paramType)) return new CollectionParameterViewModel(p);
+        if (IsComplexType(paramType)) return new JsonParameterViewModel(p);
+        
+        // Default to String for everything else
         return new StringParameterViewModel(p);
+    }
+    
+    private static bool IsCollectionType(Type type)
+    {
+        if (type.IsArray) return true;
+        if (type.IsGenericType)
+        {
+            var genericDef = type.GetGenericTypeDefinition();
+            return genericDef == typeof(System.Collections.Generic.List<>) ||
+                   genericDef == typeof(System.Collections.Generic.IList<>) ||
+                   genericDef == typeof(System.Collections.Generic.IEnumerable<>);
+        }
+        return false;
+    }
+    
+    private static bool IsComplexType(Type type)
+    {
+        // Complex = class that's not string, and not a collection
+        return type.IsClass && type != typeof(string) && !IsCollectionType(type);
     }
 }

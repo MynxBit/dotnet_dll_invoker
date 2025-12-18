@@ -31,6 +31,7 @@ namespace DotNetDllInvoker.UI.ViewModels;
 public class MainViewModel : ViewModelBase
 {
     private readonly CommandDispatcher _dispatcher;
+    private readonly Services.RecentFilesService _recentFilesService;
     
     private string _statusText = "Ready";
     private bool _isBusy;
@@ -42,9 +43,11 @@ public class MainViewModel : ViewModelBase
     {
         // Composition Root: Use CommandDispatcher's internal composition for simplicity
         _dispatcher = new CommandDispatcher();
+        _recentFilesService = new Services.RecentFilesService();
 
         LoadDllCommand = new RelayCommand(ExecuteLoadDll, _ => !IsBusy);
         InvokeAllCommand = new RelayCommand(ExecuteInvokeAll, _ => !IsBusy && Methods.Count > 0);
+        OpenRecentCommand = new RelayCommand(ExecuteOpenRecent);
         
         Methods = new ObservableCollection<MethodViewModel>();
         LoadedAssemblies = new ObservableCollection<DotNetDllInvoker.Contracts.LoadedAssemblyInfo>();
@@ -52,9 +55,36 @@ public class MainViewModel : ViewModelBase
         
         ShowDependenciesCommand = new RelayCommand(ExecuteShowDependencies);
         CloseDependencyPanelCommand = new RelayCommand(ExecuteCloseDependencyPanel);
+        ShowCallGraphCommand = new RelayCommand(ExecuteShowCallGraph);
+        UnloadDllCommand = new RelayCommand(ExecuteUnloadDll);
     }
 
     public ObservableCollection<MethodViewModel> Methods { get; }
+    
+    // Search Filter
+    private string _methodSearchText = string.Empty;
+    public string MethodSearchText
+    {
+        get => _methodSearchText;
+        set
+        {
+            if (SetProperty(ref _methodSearchText, value))
+            {
+                OnPropertyChanged(nameof(FilteredMethods));
+            }
+        }
+    }
+    
+    public IEnumerable<MethodViewModel> FilteredMethods
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(_methodSearchText))
+                return Methods;
+            return Methods.Where(m => m.Name.Contains(_methodSearchText, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+
     public ObservableCollection<DotNetDllInvoker.Contracts.LoadedAssemblyInfo> LoadedAssemblies { get; }
 
     private DotNetDllInvoker.Contracts.LoadedAssemblyInfo? _selectedAssembly;
@@ -72,6 +102,41 @@ public class MainViewModel : ViewModelBase
 
     public ICommand LoadDllCommand { get; }
     public ICommand InvokeAllCommand { get; }
+    public ICommand OpenRecentCommand { get; }
+    
+    public IReadOnlyList<string> RecentFiles => _recentFilesService.RecentFiles;
+    
+    // Theme Toggle
+    private bool _isDarkMode = true;
+    public bool IsDarkMode
+    {
+        get => _isDarkMode;
+        set
+        {
+            if (SetProperty(ref _isDarkMode, value))
+            {
+                ApplyTheme(value);
+            }
+        }
+    }
+    
+    public ICommand ToggleThemeCommand => new RelayCommand(_ => IsDarkMode = !IsDarkMode);
+    
+    private void ApplyTheme(bool isDark)
+    {
+        var app = System.Windows.Application.Current;
+        var mergedDicts = app.Resources.MergedDictionaries;
+        
+        // Remove current theme
+        var themeToRemove = mergedDicts.FirstOrDefault(d => 
+            d.Source != null && (d.Source.OriginalString.Contains("DarkTheme") || d.Source.OriginalString.Contains("LightTheme")));
+        if (themeToRemove != null)
+            mergedDicts.Remove(themeToRemove);
+        
+        // Add new theme
+        var themePath = isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml";
+        mergedDicts.Insert(0, new ResourceDictionary { Source = new Uri(themePath, UriKind.Relative) });
+    }
 
     public string StatusText
     {
@@ -128,6 +193,14 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// Public entry point for loading DLLs from Drag & Drop.
+    /// </summary>
+    public void LoadDllFromPath(string path)
+    {
+        LoadAssembly(path);
+    }
+
     private async void LoadAssembly(string path)
     {
         try
@@ -148,6 +221,10 @@ public class MainViewModel : ViewModelBase
             SelectedAssembly = _dispatcher.State.ActiveAssembly;
             
             StatusText = $"Loaded {System.IO.Path.GetFileName(path)}.";
+            
+            // Track in recent files
+            _recentFilesService.AddRecent(path);
+            OnPropertyChanged(nameof(RecentFiles));
         }
         catch (Exception ex)
         {
@@ -157,6 +234,14 @@ public class MainViewModel : ViewModelBase
         finally
         {
             IsBusy = false;
+        }
+    }
+    
+    private void ExecuteOpenRecent(object? obj)
+    {
+        if (obj is string path && !string.IsNullOrEmpty(path))
+        {
+            LoadAssembly(path);
         }
     }
     
@@ -172,6 +257,60 @@ public class MainViewModel : ViewModelBase
     
     public ICommand ShowDependenciesCommand { get; }
     public ICommand CloseDependencyPanelCommand { get; }
+    public ICommand ShowCallGraphCommand { get; }
+
+    private void ExecuteShowCallGraph(object? obj)
+    {
+        var targetAssembly = obj as DotNetDllInvoker.Contracts.LoadedAssemblyInfo ?? SelectedAssembly;
+        
+        if (targetAssembly?.Assembly == null) 
+        {
+            StatusText = "No assembly selected";
+            return;
+        }
+        
+        StatusText = $"Opening Call Graph for {targetAssembly.Name}...";
+        Views.CallGraphWindow.ShowForAssembly(targetAssembly.Assembly);
+    }
+
+    public ICommand UnloadDllCommand { get; }
+
+    private void ExecuteUnloadDll(object? obj)
+    {
+        var targetAssembly = obj as DotNetDllInvoker.Contracts.LoadedAssemblyInfo ?? SelectedAssembly;
+        
+        if (targetAssembly == null) return;
+        
+        var assemblyName = targetAssembly.Name;
+        
+        // Clear methods if this was the active one
+        if (SelectedAssembly == targetAssembly)
+        {
+            Methods.Clear();
+            Dependencies.Clear();
+            SelectedAssembly = null;
+        }
+        
+        // Remove from UI list
+        LoadedAssemblies.Remove(targetAssembly);
+        
+        // CRITICAL: Remove from backend state AND unload from memory
+        // This calls Context.Unload() internally
+        _dispatcher.State.RemoveAssembly(targetAssembly);
+        
+        // Force GC to help release the assembly
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        
+        // Select another assembly if available
+        if (SelectedAssembly == null && LoadedAssemblies.Count > 0)
+        {
+            SelectedAssembly = LoadedAssemblies.FirstOrDefault();
+        }
+        
+        StatusText = $"Unloaded {assemblyName} from memory";
+    }
 
     private void ExecuteShowDependencies(object? obj)
     {

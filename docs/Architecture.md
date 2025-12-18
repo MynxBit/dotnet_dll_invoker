@@ -1,114 +1,94 @@
-# Architecture & Directory Design
+# Architecture & Core Concepts
 
-**Design Goal:** Reflection-driven execution with explicit, auditable boundaries.
+## 1. Core Philosophy
+**Does it Execute?** Yes.
+**Is it Safe?** Controlled, but inherently risky.
 
-## 🧱 Top-Level Structure
-```text
-DotNetDllInvoker/
-├── DotNetDllInvoker.sln
-├── README.md
-├── LICENSE
-├── SECURITY.md
-├── src/
-│   ├── DotNetDllInvoker.Contracts/   [Interfaces & Immutable Records]
-│   ├── DotNetDllInvoker.Shared/      [Utilities & Constants]
-│   ├── DotNetDllInvoker.Results/     [Structured Outcomes]
-│   ├── DotNetDllInvoker.Reflection/  [Metadata Inspection ONLY]
-│   ├── DotNetDllInvoker.Dependency/  [Dependency Analysis]
-│   ├── DotNetDllInvoker.Parameters/  [Input Synthesis]
-│   ├── DotNetDllInvoker.Execution/   [The Execution Boundary]
-│   ├── DotNetDllInvoker.Core/        [Orchestration "Brain"]
-├── ui/
-│   ├── DotNetDllInvoker.UI/          [WPF/Avalonia UI]
-├── cli/
-│   ├── DotNetDllInvoker.CLI/         [Command Line Interface]
-├── docs/
-│   ├── Architecture.md
-│   ├── LowLevelDiagram.md
-│   ├── ControlFlow.md
-│   ├── ThreatModel.md
-└── tests/
-    ├── DotNetDllInvoker.Tests/
+### The Mental Model
+Think of **DotNet DLL Invoker** as a debugger without a program counter, operating at the method boundary instead of process start.
+1.  **Explicit Control:** Nothing executes automatically. "Invoke" is a conscious action.
+2.  **Maximum Visibility:** All methods (Private/Static/etc.) are visible.
+3.  **Analyst-First Design:** Prioritizes understanding over convenience. Assumes DLLs may be hostile.
+
+---
+
+## 2. High-Level Architecture
+The solution follows a strict "Contract-First" directory structure to separate concerns.
+
+### 🧱 Top-Level Structure
+*   **`src/DotNetDllInvoker.Core`**: The application brain. Orchestrates data flow but does not execute.
+*   **`src/DotNetDllInvoker.Execution`**: **(⚠ DANGER ZONE)** The *only* layer allowed to call `MethodInfo.Invoke`. Isolated for auditability.
+*   **`src/DotNetDllInvoker.Reflection`**: Logic for reading metadata, IL, and decompiling code. Read-Only.
+*   **`src/DotNetDllInvoker.UI`**: WPF Presentation layer (MVVM).
+
+### ⚙ Key Components
+1.  **Shared**: Utilities (`Guard.cs`). Zero logic.
+2.  **Contracts**: Interfaces (`IMethodInvoker`, `IAssemblyLoader`). Defines *what*, not *how*.
+3.  **Results**: Structured outcomes (`InvocationResult`). Never leak raw exceptions.
+4.  **Reflection**: `AssemblyLoader.cs` (AssemblyLoadContext), `DecompilerService.cs`.
+5.  **Dependency**: Read-only dependency resolution.
+6.  **Parameters**: `AutoParameterGenerator` for type-safe default inputs.
+
+---
+
+## 3. Low-Level Execution Pipeline
+Visualizes the pipeline:
+
+```mermaid
+graph TD
+    UI[UI Action] --> Dispatcher[Dispatcher]
+    Dispatcher --> LoadHandler[Load Handler]
+    LoadHandler --> LoadAPI[Assembly.Load]
+    Registry --> DepRes[Dependency Resolver]
+    DepRes --> Enumerator[Method Enumerator]
+    Metadata --> Inspect[Inspection Layer]
+    Inspect --> ParamRes[Parameter Logic]
+    ParamRes --> Decision[Invoke Decision]
+    Decision --> Invoker[Invocation Engine]
+    Invoker --> Result[Result Capture]
+    Result --> Renderer[UI Output]
 ```
 
-## 🧠 Core Principles (The "Legend" Perspective)
-1.  **Core** never executes code.
-2.  **Execution** never touches UI.
-3.  **Reflection** never makes decisions.
-4.  **Parameter** logic is deterministic.
-5.  **Results** are structured, not strings.
-6.  **Contracts** are immutable.
-7.  **Shared** contains zero business logic.
+### Execution Boundary (`src/DotNetDllInvoker.Execution`)
+*   **Boundary:** `MethodInfo.Invoke` is the SINGLE execution point.
+*   **Safety:** Wrapped in `try/catch (TargetInvocationException)`.
+*   **Async Handling:** Automatically awaits `Task` and `Task<T>` return types.
 
-## 🔩 Layer Details
+---
 
-### 1. src/DotNetDllInvoker.Shared
-*Dumb utilities only.*
-*   `Guard.cs`
-*   `Logger.cs`
-*   `ErrorCodes.cs`
-*   `PathHelpers.cs`
-*   **Rule:** If it starts to "think", it doesn't belong here.
+## 4. Control Flows
 
-### 2. src/DotNetDllInvoker.Contracts
-*Pure interfaces and records. Zero logic.*
-*   `IAssemblyLoader.cs`
-*   `IMethodInvoker.cs`
-*   `IParameterResolver.cs`
-*   `InvocationMode.cs`
-*   **Why:** Defines *what* happens, never *how*. Enables future sandboxing.
+### A. DLL Load Flow
+1.  User selects **Add DLL**.
+2.  Tool validates file existence.
+3.  DLL is loaded via `AssemblyLoadContext`.
+4.  Metadata extracted (Name, Version).
+5.  **Guarantee:** No method executed. Static constructors *may* run implicitly by CLR.
 
-### 3. src/DotNetDllInvoker.Results
-*Structured outcome handling.*
-*   `InvocationResult.cs` (Includes `CapturedStdOut/StdErr`)
-*   `InvocationError.cs`
-*   `ResultFormatter.cs`
-*   **Why:** Never leak raw exceptions to UI. Capture everything the DLL writes.
+### B. Dependency Resolution Flow
+*   **Runtime Hook:** `AssemblyLoadContext.Resolving` event probes adjacent files.
+*   **Trigger:** When executed code requests a missing DLL.
+*   **Outcome:** Seamless execution for side-by-side dependencies.
 
-### 4. src/DotNetDllInvoker.Reflection
-*Everything reflection-related, nothing executes.*
-*   `AssemblyLoader.cs` (Uses `AssemblyLoadContext` with `Resolving` hook)
-*   `MethodScanner.cs`
-*   `SignatureBuilder.cs` (Reconstructs C# signatures from metadata)
-*   `DecompilerService.cs` (Wraps ICSharpCode.Decompiler)
-*   `ILReader.cs` (Raw IL instruction parsing)
-*   `ReflectionFlagsProvider.cs` (Centralized flags)
-*   **Rule:** ❌ No Invoke() ❌ No instance creation.
+### C. Parameter Resolution Flow
+1.  **User Inputs?** ✅ Use them.
+2.  **Missing?** ❌ Trigger **Auto Parameter Generator**.
+    *   Creates defaults (0, false, null).
+    *   Enables "Dry Run" execution.
 
-### 5. src/DotNetDllInvoker.Dependency
-*Read-only dependency visibility.*
-*   `DependencyResolver.cs`
-*   `DependencyStatus.cs`
-*   **Rule:** Predictive analysis only. No auto-loading from internet.
+### D. Invocation Flow (Single Method)
+1.  Check Dependency Status.
+2.  **Instance Creation:** (if non-static).
+3.  **Invocation:** `MethodInfo.Invoke`.
+4.  **Capture:** Result / Output / Exception.
+5.  **Render:** To UI Log.
 
-### 6. src/DotNetDllInvoker.Parameters
-*Controlled parameter synthesis.*
-*   `ParameterResolver.cs`
-*   `AutoParameterGenerator.cs` (Type-correct defaults)
-*   `TypeDefaultMap.cs`
-*   **Why:** Keeps parameter generation type-safe but logic-blind.
+---
 
-### 7. src/DotNetDllInvoker.Execution (⚠ DANGER ZONE)
-*The only place code runs.*
-*   `InvocationEngine.cs` (The **ONLY** place `MethodInfo.Invoke` exists)
-*   `InstanceFactory.cs`
-*   `InvocationGuard.cs`
-*   **Rule:** This file should be easy to grep and audit.
-
-### 8. src/DotNetDllInvoker.Core
-*Application brain. No UI, no execution.*
-*   `CommandDispatcher.cs`
-*   `InvocationCoordinator.cs`
-*   `ProjectState.cs`
-*   **Why:** Orchestrates flows defined in ControlFlow.md. Turns architecture into behavior.
-
-## Presentation Layers
-
-### cli/DotNetDllInvoker.CLI
-*Thin wrapper.*
-*   `CommandParser.cs`
-*   `CliRenderer.cs`
-
-### ui/DotNetDllInvoker.UI
-*Presentation only.*
-*   **Rule:** UI must never call Invoke() directly. Only talks to `Core`.
+## 5. UI Architecture (WPF)
+*   **Pattern:** MVVM (Model-View-ViewModel).
+*   **Threading:** Strict UI/Background separation. Long-running tasks use `Task.Run`.
+*   **Dynamic Views:**
+    *   **Method Cockpit:** Auto-generated input controls based on `ParameterInfo`.
+    *   **Dependency Sidebar:** Overlay for dependency status.
+    *   **Decompiler Tab:** Integrated `ICSharpCode.Decompiler` view.

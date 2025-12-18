@@ -27,7 +27,13 @@ public class ILInstruction
     
     public override string ToString()
     {
-        return $"IL_{Offset:x4}: {OpCode.Name} {Operand}";
+        var operandStr = Operand switch
+        {
+            System.Reflection.MemberInfo m => m.Name,
+            null => "",
+            _ => Operand.ToString()
+        };
+        return $"IL_{Offset:x4}: {OpCode.Name} {operandStr}";
     }
 }
 
@@ -134,10 +140,9 @@ public class ILReader
                     position += 4;
                     try 
                     { 
-                        // Try resolving member
+                        // Store the actual member reference for call graph analysis
                         var member = module.ResolveMember(token);
-                        operand = member?.Name ?? $"Token:{token:x}";
-                        if (member is Type t) operand = t.Name;
+                        operand = member; // Keep as MemberInfo, not just name
                     } 
                     catch 
                     { 

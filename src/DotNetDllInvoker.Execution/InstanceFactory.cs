@@ -3,7 +3,7 @@
 //
 // Responsibility:
 // Creates instances of types when invoking non-static methods.
-// Uses Activator.CreateInstance or default constructors.
+// Supports default constructors and parameterized constructor injection.
 //
 // Depends on:
 // - System.Reflection
@@ -13,6 +13,7 @@
 // Triggers constructors of arbitrary types. ⚠ DANGER.
 
 using System;
+using System.Linq;
 using System.Reflection;
 using DotNetDllInvoker.Shared;
 
@@ -41,5 +42,47 @@ public class InstanceFactory
             // Unwrap and rethrow to generic exception or handle caller side
              throw ex.InnerException ?? ex;
         }
+    }
+
+    /// <summary>
+    /// Creates an instance using a specific constructor with provided arguments.
+    /// ⚠ EXECUTION BOUNDARY ⚠
+    /// </summary>
+    public object? CreateInstance(Type type, ConstructorInfo constructor, object?[] args)
+    {
+        Guard.NotNull(type, nameof(type));
+        Guard.NotNull(constructor, nameof(constructor));
+
+        if (type.IsAbstract || type.IsInterface)
+        {
+            throw new InvalidOperationException($"Cannot instantiate abstract type or interface: {type.Name}");
+        }
+
+        try
+        {
+            return constructor.Invoke(args);
+        }
+        catch (TargetInvocationException ex)
+        {
+            throw ex.InnerException ?? ex;
+        }
+    }
+
+    /// <summary>
+    /// Gets all public constructors for a type.
+    /// </summary>
+    public static ConstructorInfo[] GetConstructors(Type type)
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetConstructors(BindingFlags.Public | BindingFlags.Instance);
+    }
+
+    /// <summary>
+    /// Checks if a type has a parameterless constructor.
+    /// </summary>
+    public static bool HasParameterlessConstructor(Type type)
+    {
+        Guard.NotNull(type, nameof(type));
+        return type.GetConstructor(Type.EmptyTypes) != null;
     }
 }
