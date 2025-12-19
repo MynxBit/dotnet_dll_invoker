@@ -9,6 +9,10 @@
 // - System.Reflection.MethodInfo
 // - DotNetDllInvoker.Results.InvocationResult
 //
+// Used by:
+// - DotNetDllInvoker.Execution.InvocationEngine (implements)
+// - DotNetDllInvoker.Core.InvocationCoordinator (depends on)
+//
 // Execution Risk:
 // Implementations WILL execute arbitrary code. ⚠
 

@@ -1,3 +1,22 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/ParameterViewModel.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Abstract base class for parameter input ViewModels.
+// Provides common properties (Name, TypeName) and abstract GetValue() method.
+//
+// Depends on:
+// - System.Reflection
+//
+// Used by:
+// - StringParameterViewModel, IntParameterViewModel, BoolParameterViewModel,
+//   EnumParameterViewModel, JsonParameterViewModel, CollectionParameterViewModel
+// - MethodViewModel (creates parameter VMs)
+// - MainWindow.xaml (ParameterTemplateSelector)
+//
+// Execution Risk:
+// None. Pure data container.
+
 using System;
 using System.Reflection;
 

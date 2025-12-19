@@ -8,6 +8,10 @@
 // Depends on:
 // - System.Reflection.Assembly
 //
+// Used by:
+// - DotNetDllInvoker.Reflection.AssemblyLoader (implements)
+// - DotNetDllInvoker.Core.CommandDispatcher (depends on)
+//
 // Execution Risk:
 // Implementation triggers Assembly.Load, which has inherent risks.
 

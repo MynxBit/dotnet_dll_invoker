@@ -1,3 +1,19 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/ResultViewModel.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Wraps InvocationResult for UI display. Formats output, duration, and errors.
+//
+// Depends on:
+// - DotNetDllInvoker.Results
+//
+// Used by:
+// - MainViewModel (LastResult property)
+// - MainWindow.xaml (Result panel bindings)
+//
+// Execution Risk:
+// None. Pure data formattin.
+
 using System;
 using DotNetDllInvoker.Results;
 

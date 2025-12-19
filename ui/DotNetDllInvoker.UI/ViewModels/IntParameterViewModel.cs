@@ -1,3 +1,20 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/IntParameterViewModel.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// ParameterViewModel for integer input. Binds to TextBox with int binding.
+//
+// Depends on:
+// - ParameterViewModel (base)
+// - System.Reflection
+//
+// Used by:
+// - MethodViewModel (creates for int parameters)
+// - MainWindow.xaml (IntTemplate)
+//
+// Execution Risk:
+// None. Pure data binding.
+
 using System.Reflection;
 
 namespace DotNetDllInvoker.UI.ViewModels;

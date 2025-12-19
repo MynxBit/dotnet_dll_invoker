@@ -7,6 +7,10 @@
 // Depends on:
 // - System.Reflection
 //
+// Used by:
+// - MethodViewModel (creates for enum parameters)
+// - MainWindow.xaml (EnumTemplate)
+//
 // Execution Risk:
 // None. UI logic only.
 

@@ -7,6 +7,11 @@
 // Depends on:
 // - System.Reflection.AssemblyName
 //
+// Used by:
+// - DotNetDllInvoker.Dependency.DependencyResolver (creates)
+// - DotNetDllInvoker.Core.ProjectState (stores)
+// - DotNetDllInvoker.UI.MainViewModel (displays)
+//
 // Execution Risk:
 // None. Data container.
 

@@ -9,6 +9,10 @@
 // - System.Reflection.Assembly
 // - System.Collections.Generic
 //
+// Used by:
+// - DotNetDllInvoker.Dependency.DependencyResolver (implements)
+// - DotNetDllInvoker.Core.CommandDispatcher (depends on)
+//
 // Execution Risk:
 // None. Analysis only.
 

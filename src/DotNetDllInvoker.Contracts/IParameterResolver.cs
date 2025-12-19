@@ -7,6 +7,10 @@
 // Depends on:
 // - System.Reflection.ParameterInfo
 //
+// Used by:
+// - DotNetDllInvoker.Parameters.ParameterResolver (implements)
+// - DotNetDllInvoker.Core.InvocationCoordinator (depends on)
+//
 // Execution Risk:
 // None (Parameter synthesis).
 

@@ -8,6 +8,10 @@
 // - System.Reflection
 // - System.Collections.Generic
 //
+// Used by:
+// - DotNetDllInvoker.Reflection.MethodScanner (implements)
+// - DotNetDllInvoker.Core.CommandDispatcher (depends on)
+//
 // Execution Risk:
 // None (Inspection only).
 

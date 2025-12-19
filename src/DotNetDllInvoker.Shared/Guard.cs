@@ -8,6 +8,10 @@
 // Depends on:
 // - System
 //
+// Used by:
+// - All modules for parameter validation
+// - AssemblyLoader, InvocationEngine, ParameterResolver, etc.
+//
 // Execution Risk:
 // None. Pure logic.
 

@@ -9,6 +9,10 @@
 // - System.Reflection
 // - System.Text.Json
 //
+// Used by:
+// - MethodViewModel (creates for complex object parameters)
+// - MainWindow.xaml (JsonTemplate)
+//
 // Execution Risk:
 // Low. JSON deserialization of user input.
 

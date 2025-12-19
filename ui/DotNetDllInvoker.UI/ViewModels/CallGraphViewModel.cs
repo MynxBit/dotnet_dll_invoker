@@ -8,6 +8,10 @@
 // Depends on:
 // - DotNetDllInvoker.Reflection (CallGraphAnalyzer)
 //
+// Used by:
+// - CallGraphWindow.xaml (DataContext)
+// - MainViewModel (creates and shows)
+//
 // Execution Risk:
 // None. UI logic only.
 

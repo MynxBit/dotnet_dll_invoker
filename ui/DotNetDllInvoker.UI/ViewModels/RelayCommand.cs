@@ -1,3 +1,21 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/RelayCommand.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Implements ICommand for MVVM button/action binding.
+// Allows ViewModels to expose commands that Views can bind to.
+//
+// Depends on:
+// - System.Windows.Input
+//
+// Used by:
+// - MainViewModel (LoadDllCommand, InvokeAllCommand, etc.)
+// - MethodViewModel (InvokeCommand)
+// - All ViewModels with bindable commands
+//
+// Execution Risk:
+// None. Pure infrastructure.
+
 using System;
 using System.Windows.Input;
 

@@ -8,6 +8,10 @@
 // - System.Reflection
 // - System.Collections.Generic
 //
+// Used by:
+// - MethodViewModel (creates for array/list parameters)
+// - MainWindow.xaml (CollectionTemplate)
+//
 // Execution Risk:
 // None. UI logic only.
 

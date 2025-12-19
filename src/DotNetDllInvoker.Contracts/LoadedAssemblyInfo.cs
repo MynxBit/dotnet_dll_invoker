@@ -1,3 +1,22 @@
+// File: src/DotNetDllInvoker.Contracts/LoadedAssemblyInfo.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Immutable record holding a loaded assembly reference, its context, and metadata.
+// Enables proper unloading via AssemblyLoadContext.
+//
+// Depends on:
+// - System.Reflection
+// - System.Runtime.Loader
+//
+// Used by:
+// - DotNetDllInvoker.Reflection.AssemblyLoader (creates instances)
+// - DotNetDllInvoker.Core.ProjectState (stores instances)
+// - DotNetDllInvoker.UI.ViewModels.MainViewModel (displays in UI)
+//
+// Execution Risk:
+// Low. Unload() triggers AssemblyLoadContext.Unload() which can have side effects.
+
 using System.Reflection;
 using System.Runtime.Loader;
 

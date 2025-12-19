@@ -1,3 +1,21 @@
+// File: ui/DotNetDllInvoker.UI/ViewModels/MethodViewModel.cs
+// Project: DotNet DLL Invoker
+//
+// Responsibility:
+// Wraps a MethodBase for UI display. Provides properties for name, signature,
+// parameters, IL code, and C# decompilation. Handles generic method resolution.
+//
+// Depends on:
+// - DotNetDllInvoker.Reflection (ILReader, DecompilerService, SignatureBuilder)
+// - System.Reflection
+//
+// Used by:
+// - MainViewModel (Methods collection)
+// - MainWindow.xaml (Methods ListBox)
+//
+// Execution Risk:
+// Low. Calls decompiler and IL reader (metadata only, no execution).
+
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;

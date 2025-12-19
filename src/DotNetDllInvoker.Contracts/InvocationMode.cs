@@ -7,6 +7,9 @@
 // Depends on:
 // - None
 //
+// Used by:
+// - DotNetDllInvoker.Core.InvocationCoordinator (mode selection)
+//
 // Execution Risk:
 // None. Enum.
 
