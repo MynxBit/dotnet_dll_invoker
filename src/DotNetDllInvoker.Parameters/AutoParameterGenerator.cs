@@ -54,10 +54,13 @@ public class AutoParameterGenerator
         {
             return Activator.CreateInstance(type);
         }
-        catch 
+        catch (Exception ex)
         {
-            // If struct has no parameterless ctor (rare in C# but possible in IL)? 
-            // Actually Activator handles structs fine.
+            // Struct creation failed - this is rare but possible for:
+            // - Structs with no parameterless ctor (IL-generated)
+            // - Types requiring special construction
+            System.Diagnostics.Debug.WriteLine(
+                $"[AutoParameterGenerator] Failed to create instance of {type.Name}: {ex.GetType().Name}");
             return null; // Fallback, though for Structs null is invalid if unboxed.
         }
     }

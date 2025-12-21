@@ -144,8 +144,14 @@ public class ILReader
                         var member = module.ResolveMember(token);
                         operand = member; // Keep as MemberInfo, not just name
                     } 
-                    catch 
+                    catch (Exception ex)
                     { 
+                        // Token resolution can fail for various reasons:
+                        // - Generic type parameters
+                        // - Forward references
+                        // - Obfuscated assemblies
+                        System.Diagnostics.Debug.WriteLine(
+                            $"[ILReader] Token resolution failed at 0x{token:X}: {ex.GetType().Name}");
                         operand = $"Token:{token:x}"; 
                     }
                     break;

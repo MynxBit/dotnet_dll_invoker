@@ -1,37 +1,55 @@
 # Project Roadmap
 
-This document tracks features identified during Gap Analysis that are slated for future versions (V11+).
+This document tracks features identified during Gap Analysis that are slated for future versions.
 
-## 🚀 Future Features
+## Completed Features ✅
 
-### 1. Generic Method Support (`<T>`)
-*   **Current Limit**: Cannot invoke methods with generic type parameters (e.g., `Verify<T>(T item)`).
-*   **Proposed Solution**: Add a "Type Selector" UI in the method cockpit to allow users to specify concrete types (int, string, existing types) for `T` before invocation.
+### V14.0: Stealth Mode
+*   **Status**: ✅ **Completed**
+*   **Solution**: Added Pre-Warmed Worker Process architecture. UI spawns CLI with `--server` flag, communicates via stdin/stdout JSON. After first invocation, subsequent calls generate ZERO runtime noise.
 
-### 2. Complex Parameter Sandbox
-*   **Current Limit**: Only `int`, `bool`, `string` are supported.
-*   **Proposed Solution**:
-    *   **JSON Input**: Allow passing complex objects via JSON deserialization.
-    *   **Collection Editor**: specific UI for `List<T>` and Arrays.
+### V13.3: Architecture Detection
+*   **Status**: ✅ **Completed**
+*   **Solution**: PE header parsing via `PEReader` to detect x86/x64/AnyCPU. Shows warning on mismatch.
 
-### 3. Object Workbench (State Persistence)
-*   **Current Limit**: Every "Invoke" creates a fresh instance. No state is shared between calls.
-*   **Proposed Solution**:
-    *   **Instance Registry**: "Keep Alive" checkbox.
-    *   **Object Explorer**: View and manipulate live instances in memory (similar to BlueJ or LINQPad).
+### V13.2: Generic Method Support
+*   **Status**: ✅ **Completed**
+*   **Solution**: `ResolvedMethod` logic automatically closes open generic methods using `object` (or inferred types).
 
-    - [ ] **Constructor Injection**: Wizard for instantiating classes
+### V13.0: Constructor Injection (Smart Instantiation)
+*   **Status**: ✅ **Completed**
+*   **Solution**: `InstanceFactory.CreateInstanceRecursive` handles classes without default constructors by creating dependencies recursively.
 
-### 5. Dependency Call Graph
-*   **Feature**: Visual Graph of Method Calls (Who calls Who?).
-*   **UI Design**:
-    *   **Entry Point**: Right-click on Assembly in Sidebar -> "Show Call Graph".
-    *   **Separate Window**: Graph opens in a dedicated maximized window.
-    *   **Interactive Nodes**: Click a node to view its IL/Pseudocode in a side panel.
-    *   **Scope**: Show dependencies for the entire DLL or subgraph for a single method.
+### V13.1: Decompilation Restored
+*   **Status**: ✅ **Completed**
+*   **Solution**: Re-enabled Decompiler and IL Reader with background loading and robust error handling.
+
+### CLI Mode (Silent Execution)
+*   **Status**: ✅ **Completed**
+*   **Solution**: Published separate CLI executable for headless/silent operation.
 
 ---
 
-## 📅 Immediate Priorities (V10/V11)
-*   ✅ **x64 Support** (Complete)
-*   ✅ **x86 Support** (Complete) - 32-bit builds available in `dist/`.
+## 🔮 Future Features
+
+### 1. Complex Parameter Sandbox
+*   **Current Limit**: Only primitives and JSON-serializable types are supported.
+*   **Proposed Solution**: Collection Editor UI for `List<T>` and Arrays.
+
+### 2. Object Workbench (State Persistence)
+*   **Current Limit**: Every "Invoke" creates a fresh instance.
+*   **Proposed Solution**: "Keep Alive" checkbox to reuse instances across calls.
+
+### 3. Native CLR Host (V15?)
+*   **Feature**: C++ native loader for absolute zero noise from first invocation.
+*   **Status**: 🔮 Planned (if user demand exists)
+
+---
+
+## 🚀 Version History
+*   **V14.0**: Stealth Mode (Pre-Warmed Worker Process).
+*   **V13.3**: Architecture Detection.
+*   **V13.2**: Generics Fix, Stego Support, CLI Silent Mode.
+*   **V13.1**: Decompilation Restored (Safe Mode).
+*   **V13.0**: Smart Recursive Instantiation.
+*   **V12.0**: Official x64/x86 Split Release.

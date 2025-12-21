@@ -83,9 +83,18 @@ public class CallGraphAnalyzer
                 }
             }
         }
-        catch
+        catch (ReflectionTypeLoadException ex)
+        {
+            // Some types failed to load - process the ones that did load
+            // This is expected for assemblies with missing dependencies
+            System.Diagnostics.Debug.WriteLine(
+                $"[CallGraphAnalyzer.BuildGraph] Partial type load: {ex.LoaderExceptions?.Length ?? 0} types failed");
+        }
+        catch (Exception ex)
         {
             // Assembly may have reflection-blocked types
+            System.Diagnostics.Debug.WriteLine(
+                $"[CallGraphAnalyzer.BuildGraph] Failed to analyze assembly: {ex.GetType().Name}: {ex.Message}");
         }
         
         return graph;
@@ -175,9 +184,12 @@ public class CallGraphAnalyzer
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // IL reading may fail for some methods
+            // IL reading may fail for dynamic methods, external methods, etc.
+            // This is expected - return empty list, caller continues with other methods
+            System.Diagnostics.Debug.WriteLine(
+                $"[CallGraphAnalyzer.GetCalledMethods] IL read failed for {method.Name}: {ex.GetType().Name}");
         }
         
         return result;

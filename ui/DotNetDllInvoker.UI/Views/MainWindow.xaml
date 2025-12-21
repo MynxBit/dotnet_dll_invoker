@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="clr-namespace:DotNetDllInvoker.UI.ViewModels"
         mc:Ignorable="d"
-        Title="DotNet DLL Invoker (Cockpit)" Height="768" Width="1280"
+        Title="{Binding WindowTitle}" Height="768" Width="1280"
         WindowStartupLocation="CenterScreen">
     
     <Window.DataContext>
@@ -32,8 +32,13 @@
                 
                 <!-- Right Side Info -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                    <Button Command="{Binding ToggleThemeCommand}" Content="🌙" Style="{StaticResource ModernButtonStyle}" ToolTip="Toggle Dark/Light Theme" Margin="0,0,10,0"/>
-                    <TextBlock Text="v11.0" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                    <CheckBox IsChecked="{Binding IsStealthModeEnabled}" 
+                              Content="🕵️ Stealth Mode" 
+                              Foreground="{StaticResource TextSecondary}" 
+                              VerticalAlignment="Center" 
+                              Margin="0,0,15,0"
+                              ToolTip="Route invocations through a pre-warmed CLI worker for minimal process noise"/>
+                    <TextBlock Text="v14.0" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
         </Border>

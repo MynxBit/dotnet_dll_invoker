@@ -22,6 +22,7 @@ namespace DotNetDllInvoker.Contracts;
 public record DependencyRecord(
     AssemblyName AssemblyName,
     DependencyStatus Status,
+    DependencyType Type = DependencyType.Managed,
     string? ResolvedPath = null,
     string? ErrorMessage = null
 );

@@ -47,9 +47,17 @@ public class LoadedAssemblyInfo
         {
             Context.Unload();
         }
-        catch
+        catch (InvalidOperationException)
         {
-            // Context may already be unloaded or not collectible
+            // Context may not be collectible - this is expected for default context
+            System.Diagnostics.Debug.WriteLine(
+                $"[LoadedAssemblyInfo.Unload] Context not collectible for {Name}");
+        }
+        catch (Exception ex)
+        {
+            // Context may already be unloaded
+            System.Diagnostics.Debug.WriteLine(
+                $"[LoadedAssemblyInfo.Unload] Unload failed for {Name}: {ex.GetType().Name}");
         }
     }
 }

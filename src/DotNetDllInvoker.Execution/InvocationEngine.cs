@@ -1,19 +1,37 @@
-// File: src/DotNetDllInvoker.Execution/InvocationEngine.cs
-// Project: DotNet DLL Invoker
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE: InvocationEngine.cs
+// PATH: src/DotNetDllInvoker.Execution/InvocationEngine.cs
+// LAYER: Business (Execution)
+// ═══════════════════════════════════════════════════════════════════════════
 //
-// Responsibility:
-// Executes a single reflected method inside a controlled execution boundary.
-// This is the ONLY location where MethodInfo.Invoke() is permitted.
-// Captures Output (StdOut/StdErr) and handles Exceptions safely.
+// PRIMARY RESPONSIBILITY:
+//   Executes a single reflected method inside a controlled execution boundary.
+//   This is the ONLY location in the entire codebase where MethodInfo.Invoke() permitted.
 //
-// Depends on:
-// - System.Reflection.MethodInfo (for invocation)
-// - DotNetDllInvoker.Contracts.IMethodInvoker (contract boundary)
-// - DotNetDllInvoker.Results.InvocationResult (structured output)
-// - System.Threading.Tasks (for async unwrapping)
+// SECONDARY RESPONSIBILITIES:
+//   - Capturing StdOut and StdErr during execution.
+//   - Safely handling exceptions (unwrapping TargetInvocationException).
+//   - Handling Task and Task<T> return types (async unwrapping).
+//   - Enforcing dynamic method blocks (No Reflection.Emit).
 //
-// Execution Risk:
-// ⚠ This file executes untrusted code. Handle with care.
+// NON-RESPONSIBILITIES:
+//   - Parameter resolution (delegated to ParameterResolver).
+//   - Instance creation (delegated to InstanceFactory).
+//
+// ───────────────────────────────────────────────────────────────────────────
+// DEPENDENCIES:
+//   - System.Reflection.MethodInfo -> For invocation.
+//   - DotNetDllInvoker.Contracts.IMethodInvoker -> Implementation contract.
+//   - DotNetDllInvoker.Results.InvocationResult -> Structured return type.
+//
+// DEPENDENTS:
+//   - InvocationCoordinator -> The only authorized consumer.
+//
+// ───────────────────────────────────────────────────────────────────────────
+// CHANGE LOG:
+//   2025-12-19 - Antigravity - Enhanced with async/await logic.
+//   2025-12-21 - Antigravity - Added checks for native/extern methods.
+// ═══════════════════════════════════════════════════════════════════════════
 
 using System;
 using System.Diagnostics;
@@ -36,6 +54,44 @@ public class InvocationEngine : IMethodInvoker
         CancellationToken cancellationToken)
     {
         Guard.NotNull(method, nameof(method));
+        
+        // 0. Dynamic Method Safety Check
+        // Dynamic methods (Reflection.Emit) may contain hostile IL that crashes the process.
+        // They have no file-backed body and cannot be properly inspected.
+        if (method.GetType().Name == "DynamicMethod" || method.GetType().Name == "RTDynamicMethod")
+        {
+            return InvocationResult.Failure(
+                new InvocationError 
+                { 
+                    Code = ErrorCodes.ExecutionBlocked, 
+                    Message = "Dynamic methods (Reflection.Emit) are not supported due to crash risk. These methods are generated at runtime and may contain unsafe IL." 
+                }, 
+                TimeSpan.Zero);
+        }
+        
+        // Also check for methods with no body (abstract, interface, extern)
+        try
+        {
+            var body = method.GetMethodBody();
+            if (body == null && !method.IsAbstract && method.DeclaringType?.IsInterface != true)
+            {
+                // This is likely an extern or native method
+                return InvocationResult.Failure(
+                    new InvocationError 
+                    { 
+                        Code = ErrorCodes.ExecutionBlocked, 
+                        Message = $"Cannot invoke method '{method.Name}' - no managed method body found. This may be a native/extern method." 
+                    }, 
+                    TimeSpan.Zero);
+            }
+        }
+        catch (Exception ex)
+        {
+            // GetMethodBody() can throw for dynamic methods or certain special methods
+            // Log but continue - the method may still be invokable
+            System.Diagnostics.Debug.WriteLine(
+                $"[InvocationEngine] GetMethodBody failed for {method.Name}: {ex.GetType().Name}");
+        }
         
         // 1. Validation
         InvocationGuard.EnsureInvokable(method);

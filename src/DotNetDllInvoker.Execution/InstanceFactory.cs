@@ -25,23 +25,68 @@ public class InstanceFactory
     // This method executes constructors of unknown types.
     public object? CreateInstance(Type type)
     {
+        return CreateInstanceRecursive(type, 0);
+    }
+
+    private object? CreateInstanceRecursive(Type type, int depth)
+    {
         Guard.NotNull(type, nameof(type));
+
+        // 1. Stack Guard
+        if (depth > 10) return null; // Give up
+
+        // 2. Primitives & Value Types (Enum, Struct, Int, Bool)
+        if (type == typeof(string)) return string.Empty;
+        if (type.IsValueType) return Activator.CreateInstance(type); // Returns 0/False/DefaultStruct
+        if (type.IsArray) return Array.CreateInstance(type.GetElementType() ?? typeof(object), 0);
 
         if (type.IsAbstract || type.IsInterface)
         {
             throw new InvalidOperationException($"Cannot instantiate abstract type or interface: {type.Name}");
         }
 
-        try
+        // 3. Try Default Parameterless Constructor first
+        if (HasParameterlessConstructor(type))
         {
-            // Best effort instantiation
-            return Activator.CreateInstance(type);
+            try
+            {
+                return Activator.CreateInstance(type);
+            }
+            catch (TargetInvocationException ex)
+            {
+                throw ex.InnerException ?? ex;
+            }
         }
-        catch (TargetInvocationException ex)
+
+        // 4. Try Greedy Constructors (Constructor Injection)
+        var constructors = type.GetConstructors(BindingFlags.Public | BindingFlags.Instance)
+            .OrderBy(c => c.GetParameters().Length) // Start with simplest
+            .ToArray();
+
+        foreach (var ctor in constructors)
         {
-            // Unwrap and rethrow to generic exception or handle caller side
-             throw ex.InnerException ?? ex;
+            try
+            {
+                var paramsInfo = ctor.GetParameters();
+                var args = new object?[paramsInfo.Length];
+
+                for (int i = 0; i < paramsInfo.Length; i++)
+                {
+                    // Recursively create dependencies (Mocking)
+                    args[i] = CreateInstanceRecursive(paramsInfo[i].ParameterType, depth + 1);
+                }
+
+                return ctor.Invoke(args);
+            }
+            catch
+            {
+                // If this constructor fails, try the next one
+                continue;
+            }
         }
+
+        // 5. Fail
+        throw new InvalidOperationException($"Could not instantiate {type.Name}. No default constructor, and failed to auto-inject dependencies.");
     }
 
     /// <summary>

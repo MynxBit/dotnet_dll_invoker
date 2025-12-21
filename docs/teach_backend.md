@@ -66,6 +66,7 @@ graph TD
     
     CLI --> Core
     UI --> Core
+    UI -.->|IPC (JSON)| CLI
     
     Core --> Reflection
     Core --> Dependency
@@ -793,7 +794,29 @@ flowchart TD
     O --> Q[Create InvocationResult]
     P --> Q
     Q --> R[Restore Console.Out/Error]
+    Q --> R[Restore Console.Out/Error]
     R --> S[Display result in UI]
+
+### Flow 4: Stealth Invocation (V14)
+
+```mermaid
+flowchart TD
+    A[User Enable Stealth Mode] --> B[MainViewModel.ExecuteInvokeMethod]
+    B --> C[IsStealthModeEnabled?]
+    C -->|Yes| D[StealthInvoker.InvokeAsync]
+    D --> E{Worker Running?}
+    E -->|No| F[Process.Start(--server)]
+    F --> G[Wait for READY signal]
+    E -->|Yes| G
+    G --> H[Serialize Args to JSON]
+    H --> I[Write JSON to Stdin]
+    I --> J[Worker Deserializes & Invokes]
+    J --> K[Worker Captures Output]
+    K --> L[Worker Serializes Result]
+    L --> M[UI Reads JSON from Stdout]
+    M --> N[Show Result in UI]
+    C -->|No| O[Normal Direct Invocation]
+```
 ```
 
 ### Flow 3: Unload DLL

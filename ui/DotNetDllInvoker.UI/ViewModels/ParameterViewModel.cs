@@ -32,7 +32,20 @@ public abstract class ParameterViewModel : ViewModelBase
     }
 
     public string Name => Info.Name ?? "Param";
-    public string TypeName => Info.ParameterType.Name;
+    public string TypeName
+    {
+        get
+        {
+            try
+            {
+                return Info.ParameterType.Name;
+            }
+            catch
+            {
+                return "UnknownType";
+            }
+        }
+    }
 
     // The value that the UI binds to
     public abstract object? GetValue();

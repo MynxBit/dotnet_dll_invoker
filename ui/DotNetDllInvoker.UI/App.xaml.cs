@@ -21,21 +21,31 @@ public partial class App : Application
         
         // Background Thread Exceptions
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+        
+        // Task Exceptions
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+    }
+
+    private void OnUnobservedTaskException(object? sender, System.Threading.Tasks.UnobservedTaskExceptionEventArgs e)
+    {
+        LogException(e.Exception, "Background Task");
+        e.SetObserved(); // Prevent process termination if possible
     }
 
     private void OnDispatcherUnhandledException(object sender, DispatcherUnhandledExceptionEventArgs e)
     {
         LogException(e.Exception, "UI Thread");
-        // Prevent default crash dialog? Maybe. 
-        // For a dev tool, showing the error is good, but we want to log it first.
-        // e.Handled = true; // Uncomment to suppress crash
+        // Try to keep alive?
+        e.Handled = true; 
+        MessageBox.Show($"CRASH CAUGHT (UI Thread):\n{e.Exception.Message}\n\nApp will attempt to continue.", "Critical Error", MessageBoxButton.OK, MessageBoxImage.Error);
     }
 
     private void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
         if (e.ExceptionObject is Exception ex)
         {
-            LogException(ex, "Background Thread");
+            LogException(ex, "Background Thread (Fatal)");
+            MessageBox.Show($"FATAL CRASH (Background):\n{ex.Message}\n\nApp will terminate.", "Fatal Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -45,13 +55,10 @@ public partial class App : Application
         {
             string message = $"[{DateTime.Now}] CRASH ({source}): {ex.Message}\n{ex.StackTrace}\n--------------------------------------------------\n";
             File.AppendAllText(CrashLogFile, message);
-            
-            // Optional: Show message box so user knows log exists
-            // MessageBox.Show($"A critical error occurred. Logged to {CrashLogFile}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-        catch 
+        catch (Exception logEx)
         {
-            // If logging fails, we are in trouble.
+            System.Diagnostics.Debug.WriteLine($"Log Failed: {logEx.Message}");
         }
     }
 }

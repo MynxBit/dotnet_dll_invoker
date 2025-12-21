@@ -91,7 +91,7 @@ DotNetDllInvoker/
 ### 7. src/DotNetDllInvoker.Execution (⚠ DANGER ZONE)
 *The only place code runs.*
 *   `InvocationEngine.cs` (The **ONLY** place `MethodInfo.Invoke` exists)
-*   `InstanceFactory.cs`
+*   `InstanceFactory.cs` (Handles Smart Recursive Instantiation)
 *   `InvocationGuard.cs`
 *   **Rule:** This file should be easy to grep and audit.
 
@@ -105,10 +105,12 @@ DotNetDllInvoker/
 ## Presentation Layers
 
 ### cli/DotNetDllInvoker.CLI
-*Thin wrapper.*
+*Thin wrapper + Stealth Server.*
 *   `CommandParser.cs`
 *   `CliRenderer.cs`
+*   **Server Mode (V14):** `--server` flag enters a JSON-based IPC loop for low-noise invocation.
 
 ### ui/DotNetDllInvoker.UI
 *Presentation only.*
+*   **Stealth Mode (V14):** Toggle to route invocations through pre-warmed CLI worker.
 *   **Rule:** UI must never call Invoke() directly. Only talks to `Core`.

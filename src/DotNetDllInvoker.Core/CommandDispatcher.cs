@@ -85,11 +85,20 @@ public class CommandDispatcher
              throw new InvalidOperationException("No active assembly.");
              
         // Simple name matching (First match for CLI simplicity)
-        var method = State.DiscoveredMethods
-            .FirstOrDefault(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase));
+        var methods = State.DiscoveredMethods
+            .Where(m => m.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase))
+            .ToList();
             
-        if (method == null)
+        if (!methods.Any())
              throw new ArgumentException($"Method '{methodName}' not found.");
+
+        // Smart Resolution: Prefer method with matching parameter count
+        var argCount = args?.Length ?? 0;
+        var method = methods.FirstOrDefault(m => m.GetParameters().Length == argCount);
+        
+        // Fallback: Default to first usage if no exact parameter count match (e.g. maybe params array? or just closest match)
+        if (method == null)
+            method = methods.First();
 
         return await _coordinator.InvokeMethodAsync(method, args, token);
     }

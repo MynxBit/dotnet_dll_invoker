@@ -60,7 +60,20 @@ public class MethodViewModel : ViewModelBase
 
     public string Name => _method.Name;
     public string Signature => SignatureBuilder.BuildSignature(_method);
-    public string ReturnType => (_method as MethodInfo)?.ReturnType.Name ?? "void";
+    public string ReturnType
+    {
+        get
+        {
+            try
+            {
+                return (_method as MethodInfo)?.ReturnType.Name ?? "void";
+            }
+            catch
+            {
+                return "Unknown";
+            }
+        }
+    }
     
     public ObservableCollection<ParameterViewModel> Parameters { get; }
     
@@ -70,15 +83,37 @@ public class MethodViewModel : ViewModelBase
     public ObservableCollection<GenericTypeArgumentViewModel> GenericTypeArguments { get; }
     
     /// <summary>
-    /// True if this is a generic method definition (e.g., Method<T>)
+    /// True if this is a generic method definition (e.g., Method&lt;T&gt;)
     /// </summary>
     public bool IsGenericMethod => (_method as MethodInfo)?.IsGenericMethodDefinition == true;
+    
+    /// <summary>
+    /// True if this is a constructor (.ctor)
+    /// </summary>
+    public bool IsConstructor => _method is ConstructorInfo;
+    
+    /// <summary>
+    /// Warning message for constructors (invoke through Constructor Wizard instead)
+    /// </summary>
+    public string? LimitationWarning => IsConstructor 
+        ? "⚠ Constructor: Use Object Workbench → Constructor Wizard to create instances" 
+        : null;
+    
+    /// <summary>
+    /// Display name with constructor/generic indicators
+    /// </summary>
+    public string DisplayName
+    {
+        get
+        {
+            var prefix = IsConstructor ? "[CTOR] " : "";
+            var suffix = IsGenericMethod ? " <T>" : "";
+            return $"{prefix}{Name}{suffix}";
+        }
+    }
 
     public ICommand InvokeCommand { get; }
 
-    public string ILCode => BuildIL(_method);
-    public string CSCode => BuildCSharpDeclaration(_method);
-    
     /// <summary>
     /// Returns the resolved MethodInfo with concrete type arguments applied.
     /// For non-generic methods, returns the original method.
@@ -119,10 +154,59 @@ public class MethodViewModel : ViewModelBase
         return sb.ToString();
     }
 
+    private string _ilCode = "";
+    public string ILCode
+    {
+        get => _ilCode; 
+        set => SetProperty(ref _ilCode, value);
+    }
+
+    private string _csCode = "";
+    public string CSCode
+    {
+        get => _csCode;
+        set => SetProperty(ref _csCode, value);
+    }
+    
+    private bool _codesLoaded = false;
+    public async void LoadCodesAsync()
+    {
+        if (_codesLoaded) return;
+        _codesLoaded = true;
+
+        CSCode = "// Loading...";
+        ILCode = "// Loading...";
+
+        await Task.Run(() => 
+        {
+            try
+            {
+                // Decompile Logic
+                var cs = DecompilerService.Decompile(_method);
+                var il = BuildIL(_method);
+                
+                // Update UI on correct thread
+                System.Windows.Application.Current.Dispatcher.Invoke(() => 
+                {
+                    CSCode = cs;
+                    ILCode = il;
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Windows.Application.Current.Dispatcher.Invoke(() => 
+                {
+                    CSCode = $"// Error loading code: {ex.Message}";
+                    ILCode = $"// Error loading IL: {ex.Message}";
+                });
+            }
+        });
+    }
+
     private string BuildCSharpDeclaration(MethodBase method)
     {
-        // Use external decompiler for full body
-        return DecompilerService.Decompile(method);
+        // Legacy: replaced by DecompilerService
+        return "Loading...";
     }
     
     // Used by MainViewModel to know which method to invoke
@@ -141,45 +225,84 @@ public class MethodViewModel : ViewModelBase
     {
         Parameters.Clear();
         
-        // Use ResolvedMethod for generic methods to get concrete parameter types
-        var methodToInspect = IsGenericMethod ? ResolvedMethod : _method;
-        
-        foreach (var p in methodToInspect.GetParameters())
+        try
         {
-            Parameters.Add(CreateParameterVM(p));
+            // Use ResolvedMethod for generic methods to get concrete parameter types
+            // If resolution fails (e.g. invalid metadata), fallback to _method
+            var methodToInspect = IsGenericMethod ? ResolvedMethod : _method;
+            
+            foreach (var p in methodToInspect.GetParameters())
+            {
+                Parameters.Add(CreateParameterVM(p));
+            }
+        }
+        catch (Exception)
+        {
+            // Swallow error if GetParameters fails on corrupt method
         }
     }
 
     private ParameterViewModel CreateParameterVM(ParameterInfo p)
     {
-        var paramType = p.ParameterType;
-        
-        if (paramType == typeof(int)) return new IntParameterViewModel(p);
-        if (paramType == typeof(bool)) return new BoolParameterViewModel(p);
-        if (paramType.IsEnum) return new EnumParameterViewModel(p);
-        if (IsCollectionType(paramType)) return new CollectionParameterViewModel(p);
-        if (IsComplexType(paramType)) return new JsonParameterViewModel(p);
-        
-        // Default to String for everything else
-        return new StringParameterViewModel(p);
+        try
+        {
+            var paramType = p.ParameterType;
+            
+            // Wrap checks to avoid crash on bad types
+            if (paramType == typeof(int)) return new IntParameterViewModel(p);
+            if (paramType == typeof(bool)) return new BoolParameterViewModel(p);
+            
+            bool isEnum = false;
+            try { isEnum = paramType.IsEnum; } catch {}
+            if (isEnum) return new EnumParameterViewModel(p);
+
+            if (IsCollectionType(paramType)) return new CollectionParameterViewModel(p);
+            
+            // IsComplexType can throw on Type Load Error
+            bool isComplex = false;
+            try { isComplex = IsComplexType(paramType); } catch {}
+            
+            if (isComplex) return new JsonParameterViewModel(p);
+            
+            // Default to String for everything else
+            return new StringParameterViewModel(p);
+        }
+        catch (Exception)
+        {
+            // Fallback for types that fail to load (mismatched metadata)
+            return new StringParameterViewModel(p);
+        }
     }
     
     private static bool IsCollectionType(Type type)
     {
-        if (type.IsArray) return true;
-        if (type.IsGenericType)
+        try
         {
-            var genericDef = type.GetGenericTypeDefinition();
-            return genericDef == typeof(System.Collections.Generic.List<>) ||
-                   genericDef == typeof(System.Collections.Generic.IList<>) ||
-                   genericDef == typeof(System.Collections.Generic.IEnumerable<>);
+            if (type.IsArray) return true;
+            if (type.IsGenericType)
+            {
+                var genericDef = type.GetGenericTypeDefinition();
+                return genericDef == typeof(System.Collections.Generic.List<>) ||
+                       genericDef == typeof(System.Collections.Generic.IList<>) ||
+                       genericDef == typeof(System.Collections.Generic.IEnumerable<>);
+            }
         }
+        catch { }
         return false;
     }
     
     private static bool IsComplexType(Type type)
     {
-        // Complex = class that's not string, and not a collection
-        return type.IsClass && type != typeof(string) && !IsCollectionType(type);
+        try
+        {
+            // Exclude system types that cause serialization issues
+            if (typeof(Delegate).IsAssignableFrom(type)) return false;
+            if (typeof(MemberInfo).IsAssignableFrom(type)) return false;
+            if (typeof(Type).IsAssignableFrom(type)) return false;
+            
+            // Complex = class that's not string, and not a collection
+            return type.IsClass && type != typeof(string) && !IsCollectionType(type);
+        }
+        catch { return false; }
     }
 }

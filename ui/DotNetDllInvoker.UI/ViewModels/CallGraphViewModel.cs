@@ -131,25 +131,14 @@ public class CallGraphViewModel : ViewModelBase
         Nodes.Clear();
         Edges.Clear();
         
-        // Create node ViewModels with positions
-        var nodeIndex = 0;
+        // Create node ViewModels first (without positions)
         foreach (var node in graph.Nodes.Values)
         {
-            // Simple grid layout
-            var row = nodeIndex / 5;
-            var col = nodeIndex % 5;
-            
-            var vm = new CallGraphNodeViewModel(node)
-            {
-                X = 50 + col * 180,
-                Y = 50 + row * 100
-            };
-            
+            var vm = new CallGraphNodeViewModel(node) { X = 0, Y = 0 };
             Nodes.Add(vm);
-            nodeIndex++;
         }
         
-        // Create edge ViewModels
+        // Create edge ViewModels (need this to determine hierarchy)
         foreach (var edge in graph.Edges)
         {
             var fromNode = Nodes.FirstOrDefault(n => n.Id == edge.FromId);
@@ -160,20 +149,110 @@ public class CallGraphViewModel : ViewModelBase
                 Edges.Add(new CallGraphEdgeViewModel(fromNode, toNode, edge.CallType));
             }
         }
+        
+        // Apply hierarchical layout
+        ApplyHierarchicalLayout();
+    }
+    
+    /// <summary>
+    /// Hierarchical layout: Entry points at top, called methods below.
+    /// Uses a simplified Sugiyama-style algorithm.
+    /// </summary>
+    private void ApplyHierarchicalLayout()
+    {
+        if (Nodes.Count == 0) return;
+        
+        // Step 1: Calculate node levels (depth from entry points)
+        var nodeIds = new HashSet<string>(Nodes.Select(n => n.Id));
+        var incomingCount = new Dictionary<string, int>();
+        var level = new Dictionary<string, int>();
+        
+        foreach (var node in Nodes)
+        {
+            incomingCount[node.Id] = 0;
+            level[node.Id] = 0;
+        }
+        
+        foreach (var edge in Edges)
+        {
+            incomingCount[edge.To.Id]++;
+        }
+        
+        // Entry points = nodes with no incoming edges
+        var entryPoints = Nodes.Where(n => incomingCount[n.Id] == 0).ToList();
+        if (entryPoints.Count == 0)
+        {
+            // No clear entry points (circular), just take first few
+            entryPoints = Nodes.Take(3).ToList();
+        }
+        
+        // BFS to assign levels
+        var queue = new Queue<string>();
+        var visited = new HashSet<string>();
+        
+        foreach (var entry in entryPoints)
+        {
+            level[entry.Id] = 0;
+            queue.Enqueue(entry.Id);
+            visited.Add(entry.Id);
+        }
+        
+        while (queue.Count > 0)
+        {
+            var currentId = queue.Dequeue();
+            var currentLevel = level[currentId];
+            
+            // Find all outgoing edges
+            var outgoing = Edges.Where(e => e.From.Id == currentId).ToList();
+            foreach (var edge in outgoing)
+            {
+                var targetId = edge.To.Id;
+                var newLevel = currentLevel + 1;
+                
+                // Only update if deeper (handles cycles)
+                if (newLevel > level[targetId])
+                {
+                    level[targetId] = newLevel;
+                }
+                
+                if (!visited.Contains(targetId))
+                {
+                    visited.Add(targetId);
+                    queue.Enqueue(targetId);
+                }
+            }
+        }
+        
+        // Step 2: Group nodes by level
+        var nodesPerLevel = Nodes.GroupBy(n => level[n.Id])
+                                  .OrderBy(g => g.Key)
+                                  .ToList();
+        
+        // Step 3: Position nodes
+        const double levelHeight = 120;    // Vertical spacing between levels
+        const double nodeWidth = 180;      // Horizontal spacing between nodes
+        const double startX = 50;
+        const double startY = 50;
+        
+        foreach (var levelGroup in nodesPerLevel)
+        {
+            var levelY = startY + levelGroup.Key * levelHeight;
+            var nodesInLevel = levelGroup.ToList();
+            var totalWidth = nodesInLevel.Count * nodeWidth;
+            var startXForLevel = startX + (nodesInLevel.Count > 1 ? 0 : 200); // Center single nodes
+            
+            for (int i = 0; i < nodesInLevel.Count; i++)
+            {
+                nodesInLevel[i].X = startXForLevel + i * nodeWidth;
+                nodesInLevel[i].Y = levelY;
+            }
+        }
     }
 
     private void ExecuteRefresh(object? obj)
     {
-        // Re-layout nodes
-        var nodeIndex = 0;
-        foreach (var node in Nodes)
-        {
-            var row = nodeIndex / 5;
-            var col = nodeIndex % 5;
-            node.X = 50 + col * 180;
-            node.Y = 50 + row * 100;
-            nodeIndex++;
-        }
+        // Re-apply hierarchical layout
+        ApplyHierarchicalLayout();
     }
 }
 

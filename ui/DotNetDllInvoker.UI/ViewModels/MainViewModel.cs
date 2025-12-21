@@ -1,17 +1,34 @@
-// File: ui/DotNetDllInvoker.UI/ViewModels/MainViewModel.cs
-// Project: DotNet DLL Invoker
+// ═══════════════════════════════════════════════════════════════════════════
+// FILE: MainViewModel.cs
+// PATH: ui/DotNetDllInvoker.UI/ViewModels/MainViewModel.cs
+// LAYER: Presentation (ViewModel)
+// ═══════════════════════════════════════════════════════════════════════════
 //
-// Responsibility:
-// Main orchestration Logic for the UI.
-// Connects the View (MainWindow) to the Core Dispatcher.
-// Manages State (Active Assembly, Methods, Dependencies).
+// PRIMARY RESPONSIBILITY:
+//   Main orchestration logic for the UI, serving as the connection between the View (MainWindow) and the Core Dispatcher.
 //
-// Depends on:
-// - DotNetDllInvoker.Core.CommandDispatcher
-// - DotNetDllInvoker.Contracts
+// SECONDARY RESPONSIBILITIES:
+//   - Managing application state (Active Assembly, Selected Method, Invocation Results).
+//   - Handling UI commands (Load, Invoke, Unload).
+//   - Routing invocations between Direct Mode (process-internal) and Stealth Mode (IPC).
 //
-// Execution Risk:
-// Medium. Triggers invocation via Dispatcher.
+// NON-RESPONSIBILITIES:
+//   - Direct Reflection (delegated to Core).
+//   - Direct Execution (delegated to StealthInvoker or CommandDispatcher).
+//
+// ───────────────────────────────────────────────────────────────────────────
+// DEPENDENCIES:
+//   - DotNetDllInvoker.Core.CommandDispatcher -> Backend API.
+//   - DotNetDllInvoker.UI.Services.StealthInvoker -> V14 Stealth Service.
+//
+// DEPENDENTS:
+//   - MainWindow.xaml -> DataBinding target.
+//
+// ───────────────────────────────────────────────────────────────────────────
+// CHANGE LOG:
+//   2025-12-20 - Antigravity - Added Architecture Detection logic.
+//   2025-12-21 - Antigravity - Integrated Stealth Mode routing.
+// ═══════════════════════════════════════════════════════════════════════════
 
 using System;
 using System.Collections.ObjectModel;
@@ -32,18 +49,27 @@ public class MainViewModel : ViewModelBase
 {
     private readonly CommandDispatcher _dispatcher;
     private readonly Services.RecentFilesService _recentFilesService;
+    private readonly Services.StealthInvoker _stealthInvoker;
     
     private string _statusText = "Ready";
     private bool _isBusy;
+    private bool _isStealthModeEnabled;
 
     private MethodViewModel? _selectedMethod;
     private ResultViewModel? _lastResult;
 
+    private string _windowTitle = "DotNet DLL Invoker";
+
     public MainViewModel()
     {
+        // Load default title with bitness
+        string bitness = Environment.Is64BitProcess ? "x64" : "x86";
+        WindowTitle = $"DotNet DLL Invoker (v14.0) - Process: {bitness}";
+
         // Composition Root: Use CommandDispatcher's internal composition for simplicity
         _dispatcher = new CommandDispatcher();
         _recentFilesService = new Services.RecentFilesService();
+        _stealthInvoker = new Services.StealthInvoker();
 
         LoadDllCommand = new RelayCommand(ExecuteLoadDll, _ => !IsBusy);
         InvokeAllCommand = new RelayCommand(ExecuteInvokeAll, _ => !IsBusy && Methods.Count > 0);
@@ -105,38 +131,6 @@ public class MainViewModel : ViewModelBase
     public ICommand OpenRecentCommand { get; }
     
     public IReadOnlyList<string> RecentFiles => _recentFilesService.RecentFiles;
-    
-    // Theme Toggle
-    private bool _isDarkMode = true;
-    public bool IsDarkMode
-    {
-        get => _isDarkMode;
-        set
-        {
-            if (SetProperty(ref _isDarkMode, value))
-            {
-                ApplyTheme(value);
-            }
-        }
-    }
-    
-    public ICommand ToggleThemeCommand => new RelayCommand(_ => IsDarkMode = !IsDarkMode);
-    
-    private void ApplyTheme(bool isDark)
-    {
-        var app = System.Windows.Application.Current;
-        var mergedDicts = app.Resources.MergedDictionaries;
-        
-        // Remove current theme
-        var themeToRemove = mergedDicts.FirstOrDefault(d => 
-            d.Source != null && (d.Source.OriginalString.Contains("DarkTheme") || d.Source.OriginalString.Contains("LightTheme")));
-        if (themeToRemove != null)
-            mergedDicts.Remove(themeToRemove);
-        
-        // Add new theme
-        var themePath = isDark ? "Themes/DarkTheme.xaml" : "Themes/LightTheme.xaml";
-        mergedDicts.Insert(0, new ResourceDictionary { Source = new Uri(themePath, UriKind.Relative) });
-    }
 
     public string StatusText
     {
@@ -156,6 +150,16 @@ public class MainViewModel : ViewModelBase
         }
     }
 
+    /// <summary>
+    /// V14: When enabled, method invocation is routed through a pre-warmed CLI worker process
+    /// for minimal process noise during analysis.
+    /// </summary>
+    public bool IsStealthModeEnabled
+    {
+        get => _isStealthModeEnabled;
+        set => SetProperty(ref _isStealthModeEnabled, value);
+    }
+
     public MethodViewModel? SelectedMethod
     {
         get => _selectedMethod;
@@ -163,6 +167,7 @@ public class MainViewModel : ViewModelBase
         {
             if (SetProperty(ref _selectedMethod, value))
             {
+                value?.LoadCodesAsync();
                 OnPropertyChanged(nameof(IsMethodSelected));
             }
         }
@@ -174,6 +179,12 @@ public class MainViewModel : ViewModelBase
     {
         get => _lastResult;
         set => SetProperty(ref _lastResult, value);
+    }
+
+    public string WindowTitle
+    {
+        get => _windowTitle;
+        set => SetProperty(ref _windowTitle, value);
     }
 
     private void ExecuteLoadDll(object? obj)
@@ -208,6 +219,26 @@ public class MainViewModel : ViewModelBase
             IsBusy = true;
             StatusText = $"Loading {path}...";
 
+            // V13.3: Check Architecture Compatibility
+            var dllArch = ArchitectureDetector.Detect(path);
+            var (isCompatible, compatMessage) = ArchitectureDetector.CheckCompatibility(path);
+
+            if (!isCompatible)
+            {
+                var result = MessageBox.Show(
+                    $"{compatMessage}\n\nDo you want to continue anyway?",
+                    "Architecture Mismatch",
+                    MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning);
+
+                if (result != MessageBoxResult.Yes)
+                {
+                    StatusText = "Load cancelled due to architecture mismatch.";
+                    IsBusy = false;
+                    return;
+                }
+            }
+
             await Task.Run(() => _dispatcher.LoadAssembly(path));
 
             // Sync UI list with backend
@@ -220,7 +251,9 @@ public class MainViewModel : ViewModelBase
             // Auto Select the latest
             SelectedAssembly = _dispatcher.State.ActiveAssembly;
             
-            StatusText = $"Loaded {System.IO.Path.GetFileName(path)}.";
+            // V13.3: Show architecture in status
+            var archDisplay = ArchitectureDetector.GetDisplayName(dllArch);
+            StatusText = $"Loaded {System.IO.Path.GetFileName(path)} [{archDisplay}].";
             
             // Track in recent files
             _recentFilesService.AddRecent(path);
@@ -379,26 +412,48 @@ public class MainViewModel : ViewModelBase
             StatusText = $"Invoking {methodVM.Name}...";
             LastResult = null;
 
-            // 1. Gather Arguments from UI (Auto-generate if empty)
-            var args = new object[methodVM.Parameters.Count];
-            for (int i = 0; i < methodVM.Parameters.Count; i++)
-            {
-                var input = methodVM.Parameters[i].GetValue();
-                if (IsInputEmpty(input))
-                {
-                    // Auto-generate based on type
-                    // methodVM.Parameters[i] doesn't easily expose Type, but we can look up via MethodBase
-                    var paramInfo = methodVM.MethodBase.GetParameters()[i];
-                    args[i] = _dispatcher.GenerateAutoParameter(paramInfo.ParameterType);
-                }
-                else
-                {
-                    args[i] = input;
-                }
-            }
+            DotNetDllInvoker.Results.InvocationResult result;
 
-            // 2. Invoke (Dispatcher handles async)
-            var result = await _dispatcher.InvokeMethod(methodVM.MethodBase, args);
+            if (IsStealthModeEnabled)
+            {
+                // V14: Route through pre-warmed CLI worker for minimal noise
+                StatusText = $"[Stealth] Invoking {methodVM.Name}...";
+                
+                // Serialize args to strings for CLI
+                var stringArgs = new string[methodVM.Parameters.Count];
+                for (int i = 0; i < methodVM.Parameters.Count; i++)
+                {
+                    var input = methodVM.Parameters[i].GetValue();
+                    stringArgs[i] = input?.ToString() ?? "";
+                }
+
+                var dllPath = _selectedAssembly?.FilePath ?? "";
+                result = await _stealthInvoker.InvokeAsync(dllPath, methodVM.Name, stringArgs);
+            }
+            else
+            {
+                // Normal mode: Direct invocation
+                // 1. Gather Arguments from UI (Auto-generate if empty)
+                var args = new object[methodVM.Parameters.Count];
+                for (int i = 0; i < methodVM.Parameters.Count; i++)
+                {
+                    var input = methodVM.Parameters[i].GetValue();
+                    if (IsInputEmpty(input))
+                    {
+                        // Auto-generate based on type
+                        var paramInfo = methodVM.MethodBase.GetParameters()[i];
+                        args[i] = _dispatcher.GenerateAutoParameter(paramInfo.ParameterType);
+                    }
+                    else
+                    {
+                        args[i] = input;
+                    }
+                }
+
+                // 2. Invoke (Dispatcher handles async)
+                // Use ResolvedMethod to ensure Generics are closed
+                result = await _dispatcher.InvokeMethod(methodVM.ResolvedMethod, args);
+            }
 
             // 3. Show Result
             LastResult = new ResultViewModel(result);

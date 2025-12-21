@@ -1,16 +1,33 @@
-﻿// File: cli/DotNetDllInvoker.CLI/Program.cs
-// Project: DotNet DLL Invoker
+﻿// ═══════════════════════════════════════════════════════════════════════════
+// FILE: Program.cs
+// PATH: cli/DotNetDllInvoker.CLI/Program.cs
+// LAYER: Presentation (CLI)
+// ═══════════════════════════════════════════════════════════════════════════
 //
-// Responsibility:
-// Entry point for the CLI application.
-// Implements the REPL loop and handles top-level exceptions.
+// PRIMARY RESPONSIBILITY:
+//   Entry point for the CLI application, handling startup, mode selection, and the main run loop.
 //
-// Depends on:
-// - DotNetDllInvoker.Core
-// - System.Console
+// SECONDARY RESPONSIBILITIES:
+//   - Parsing top-level arguments (e.g., --server).
+//   - Implementing the REPL (Read-Eval-Print Loop) for both interactive and server modes.
+//   - Graceful shutdown and cleanup.
 //
-// Execution Risk:
-// Orchestrates the application.
+// NON-RESPONSIBILITIES:
+//   - Business logic (delegated to Core).
+//   - Complex command parsing (delegated to CommandParser, ideally, though some is inline).
+//
+// ───────────────────────────────────────────────────────────────────────────
+// DEPENDENCIES:
+//   - DotNetDllInvoker.Core.CommandDispatcher -> The brain of the operation.
+//   - System.Console -> Standard I/O.
+//
+// DEPENDENTS:
+//   - None (Entry point).
+//
+// ───────────────────────────────────────────────────────────────────────────
+// CHANGE LOG:
+//   2025-12-21 - Antigravity - Added --server mode for V14 Stealth Invocation.
+// ═══════════════════════════════════════════════════════════════════════════
 
 using System;
 using System.Linq;
@@ -34,6 +51,13 @@ public class Program
         catch (Exception ex)
         {
             Console.WriteLine($"CRITICAL ERROR: Failed to initialize Core. {ex.Message}");
+            return;
+        }
+
+        // V14: Server Mode for Stealth Invocation
+        if (args.Length > 0 && args[0] == "--server")
+        {
+            await RunServerMode();
             return;
         }
 
@@ -69,6 +93,113 @@ public class Program
         
         // Cleanup
         _dispatcher.UnloadAll();
+    }
+
+    /// <summary>
+    /// Server mode: Reads JSON commands from stdin, executes, writes JSON results to stdout.
+    /// Used by UI in Stealth Mode for low-noise invocation.
+    /// </summary>
+    private static async Task RunServerMode()
+    {
+        // Signal ready
+        Console.WriteLine("READY");
+
+        while (true)
+        {
+            try
+            {
+                var line = Console.ReadLine();
+                if (string.IsNullOrEmpty(line)) continue;
+
+                // Parse JSON command
+                var cmd = System.Text.Json.JsonSerializer.Deserialize<ServerCommand>(line);
+                if (cmd == null) continue;
+
+                if (cmd.Action == "exit")
+                {
+                    Console.WriteLine("{\"status\":\"exiting\"}");
+                    break;
+                }
+
+                if (cmd.Action == "invoke")
+                {
+                    var result = await ExecuteServerInvoke(cmd);
+                    var json = System.Text.Json.JsonSerializer.Serialize(result);
+                    Console.WriteLine(json);
+                }
+                else
+                {
+                    Console.WriteLine("{\"success\":false,\"error\":\"Unknown action\"}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"{{\"success\":false,\"error\":\"{EscapeJson(ex.Message)}\"}}");
+            }
+        }
+
+        _dispatcher.UnloadAll();
+    }
+
+    private static async Task<ServerResult> ExecuteServerInvoke(ServerCommand cmd)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            // Load assembly if not already loaded or different
+            if (_dispatcher.State.ActiveAssembly == null || 
+                !_dispatcher.State.ActiveAssembly.FilePath.Equals(cmd.Path, StringComparison.OrdinalIgnoreCase))
+            {
+                _dispatcher.LoadAssembly(cmd.Path!);
+            }
+
+            // Invoke
+            var result = await _dispatcher.InvokeMethod(cmd.Method!, cmd.Args ?? Array.Empty<string>(), CancellationToken.None);
+            sw.Stop();
+
+            return new ServerResult
+            {
+                Success = result.IsSuccess,
+                ReturnValue = result.ReturnValue?.ToString(),
+                Stdout = result.CapturedStdOut,
+                Stderr = result.CapturedStdErr,
+                Error = result.Error?.Message,
+                DurationMs = sw.ElapsedMilliseconds
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new ServerResult
+            {
+                Success = false,
+                Error = ex.Message,
+                DurationMs = sw.ElapsedMilliseconds
+            };
+        }
+    }
+
+    private static string EscapeJson(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "\\r");
+
+    // JSON Models for Server Mode
+    private class ServerCommand
+    {
+        public string? Action { get; set; }
+        public string? Path { get; set; }
+        public string? Class { get; set; }
+        public string? Method { get; set; }
+        public string[]? Args { get; set; }
+    }
+
+    private class ServerResult
+    {
+        public bool Success { get; set; }
+        public string? ReturnValue { get; set; }
+        public string? Stdout { get; set; }
+        public string? Stderr { get; set; }
+        public string? Error { get; set; }
+        public long DurationMs { get; set; }
     }
 
     private static async Task ProcessCommand(string command, string[] args)

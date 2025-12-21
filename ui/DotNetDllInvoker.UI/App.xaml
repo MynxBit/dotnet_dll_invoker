@@ -16,29 +16,29 @@
             <!-- Data Templates for Parameters (The Dynamic Engine) -->
             <DataTemplate x:Key="StringParamTemplate" DataType="{x:Type vm:StringParameterViewModel}">
                 <StackPanel Margin="0,5">
-                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="#4EC9B0"/>
+                    <TextBlock Text="{Binding Name, Mode=OneWay}" FontWeight="Bold" Foreground="#4EC9B0"/>
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </DataTemplate>
 
             <DataTemplate x:Key="IntParamTemplate" DataType="{x:Type vm:IntParameterViewModel}">
                 <StackPanel Margin="0,5">
-                    <TextBlock Text="{Binding Name}" FontWeight="Bold" Foreground="#B5CEA8"/>
+                    <TextBlock Text="{Binding Name, Mode=OneWay}" FontWeight="Bold" Foreground="#B5CEA8"/>
                     <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"/>
                 </StackPanel>
             </DataTemplate>
 
             <DataTemplate x:Key="BoolParamTemplate" DataType="{x:Type vm:BoolParameterViewModel}">
-                 <CheckBox IsChecked="{Binding Value}" Content="{Binding Name}" Margin="0,5" Foreground="{StaticResource TextPrimary}"/>
+                 <CheckBox IsChecked="{Binding Value}" Content="{Binding Name, Mode=OneWay}" Margin="0,5" Foreground="{StaticResource TextPrimary}"/>
             </DataTemplate>
 
             <!-- NEW: Enum Parameter Template -->
             <DataTemplate x:Key="EnumParamTemplate" DataType="{x:Type vm:EnumParameterViewModel}">
                 <StackPanel Margin="0,5">
                     <TextBlock FontWeight="Bold" Foreground="#DCDCAA">
-                        <Run Text="{Binding Name}"/>
+                        <Run Text="{Binding Name, Mode=OneWay}"/>
                         <Run Text=" (" Foreground="{StaticResource TextMuted}"/>
-                        <Run Text="{Binding TypeName}" Foreground="{StaticResource TextMuted}"/>
+                        <Run Text="{Binding TypeName, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
                         <Run Text=")" Foreground="{StaticResource TextMuted}"/>
                     </TextBlock>
                     <ComboBox ItemsSource="{Binding EnumValues}" SelectedItem="{Binding SelectedValue}" Margin="0,2,0,0"/>
@@ -49,9 +49,9 @@
             <DataTemplate x:Key="JsonParamTemplate" DataType="{x:Type vm:JsonParameterViewModel}">
                 <StackPanel Margin="0,5">
                     <TextBlock FontWeight="Bold" Foreground="#CE9178">
-                        <Run Text="{Binding Name}"/>
+                        <Run Text="{Binding Name, Mode=OneWay}"/>
                         <Run Text=" (JSON: " Foreground="{StaticResource TextMuted}"/>
-                        <Run Text="{Binding TypeName}" Foreground="{StaticResource TextMuted}"/>
+                        <Run Text="{Binding TypeName, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
                         <Run Text=")" Foreground="{StaticResource TextMuted}"/>
                     </TextBlock>
                     <TextBox Text="{Binding JsonText, UpdateSourceTrigger=PropertyChanged}" 
@@ -72,9 +72,9 @@
                 <StackPanel Margin="0,5">
                     <DockPanel>
                         <TextBlock DockPanel.Dock="Left" FontWeight="Bold" Foreground="#569CD6">
-                            <Run Text="{Binding Name}"/>
+                            <Run Text="{Binding Name, Mode=OneWay}"/>
                             <Run Text=" [" Foreground="{StaticResource TextMuted}"/>
-                            <Run Text="{Binding ElementType.Name}" Foreground="{StaticResource TextMuted}"/>
+                            <Run Text="{Binding ElementType.Name, Mode=OneWay}" Foreground="{StaticResource TextMuted}"/>
                             <Run Text="]" Foreground="{StaticResource TextMuted}"/>
                         </TextBlock>
                         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
@@ -99,7 +99,7 @@
             <!-- NEW: Generic Type Argument Template -->
             <DataTemplate x:Key="GenericTypeParamTemplate" DataType="{x:Type vm:GenericTypeArgumentViewModel}">
                 <StackPanel Margin="0,5" Orientation="Horizontal">
-                    <TextBlock Text="{Binding GenericParameterName, StringFormat='Type {0}: '}" 
+                    <TextBlock Text="{Binding GenericParameterName, StringFormat='Type {0}: ', Mode=OneWay}" 
                                FontWeight="Bold" Foreground="#C586C0" VerticalAlignment="Center"/>
                     <ComboBox ItemsSource="{Binding AvailableTypes}" 
                               SelectedItem="{Binding SelectedType}"

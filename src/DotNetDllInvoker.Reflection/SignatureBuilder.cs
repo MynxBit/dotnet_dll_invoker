@@ -23,63 +23,71 @@ public static class SignatureBuilder
 {
     public static string BuildSignature(MethodBase method)
     {
-        var sb = new StringBuilder();
-
-        // 1. Access Modifiers (Approximate)
-        if (method.IsPublic) sb.Append("public ");
-        else if (method.IsPrivate) sb.Append("private ");
-        else if (method.IsFamily) sb.Append("protected ");
-        else if (method.IsAssembly) sb.Append("internal ");
-        
-        if (method.IsStatic) sb.Append("static ");
-        if (method.IsAbstract) sb.Append("abstract ");
-        if (method.IsVirtual && !method.IsAbstract) sb.Append("virtual ");
-
-        // 2. Return Type
-        if (method is MethodInfo mi)
+        try
         {
-            sb.Append(FormatTypeName(mi.ReturnType)).Append(" ");
-        }
-        else if (method is ConstructorInfo)
-        {
-            // No return type for ctor
-        }
+            var sb = new StringBuilder();
 
-        // 3. Name
-        sb.Append(method.Name);
-
-        // 4. Generics
-        if (method.IsGenericMethod)
-        {
-            sb.Append("<");
-            var genericArgs = method.GetGenericArguments();
-            sb.Append(string.Join(", ", genericArgs.Select(t => t.Name)));
-            sb.Append(">");
-        }
-
-        // 5. Parameters
-        sb.Append("(");
-        var parameters = method.GetParameters();
-        for (int i = 0; i < parameters.Length; i++)
-        {
-            var p = parameters[i];
-            if (p.IsOut) sb.Append("out ");
-            else if (p.ParameterType.IsByRef) sb.Append("ref ");
+            // 1. Access Modifiers (Approximate)
+            if (method.IsPublic) sb.Append("public ");
+            else if (method.IsPrivate) sb.Append("private ");
+            else if (method.IsFamily) sb.Append("protected ");
+            else if (method.IsAssembly) sb.Append("internal ");
             
-            // Handle params
-            if (p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0)
+            if (method.IsStatic) sb.Append("static ");
+            if (method.IsAbstract) sb.Append("abstract ");
+            if (method.IsVirtual && !method.IsAbstract) sb.Append("virtual ");
+
+            // 2. Return Type
+            if (method is MethodInfo mi)
             {
-                sb.Append("params ");
+                sb.Append(FormatTypeName(mi.ReturnType)).Append(" ");
+            }
+            else if (method is ConstructorInfo)
+            {
+                // No return type for ctor
             }
 
-            sb.Append(FormatTypeName(p.ParameterType)).Append(" ");
-            sb.Append(p.Name);
-            
-            if (i < parameters.Length - 1) sb.Append(", ");
-        }
-        sb.Append(")");
+            // 3. Name
+            sb.Append(method.Name);
 
-        return sb.ToString();
+            // 4. Generics
+            if (method.IsGenericMethod)
+            {
+                sb.Append("<");
+                var genericArgs = method.GetGenericArguments();
+                sb.Append(string.Join(", ", genericArgs.Select(t => t.Name)));
+                sb.Append(">");
+            }
+
+            // 5. Parameters
+            sb.Append("(");
+            var parameters = method.GetParameters();
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                var p = parameters[i];
+                if (p.IsOut) sb.Append("out ");
+                else if (p.ParameterType.IsByRef) sb.Append("ref ");
+                
+                // Handle params
+                if (p.GetCustomAttributes(typeof(ParamArrayAttribute), false).Length > 0)
+                {
+                    sb.Append("params ");
+                }
+
+                sb.Append(FormatTypeName(p.ParameterType)).Append(" ");
+                sb.Append(p.Name);
+                
+                if (i < parameters.Length - 1) sb.Append(", ");
+            }
+            sb.Append(")");
+
+            return sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            // If metadata is corrupt or unreadable (e.g. version mismatch), return partial info safe
+            return $"{method.Name}(...) [Signature Error: {ex.Message}]";
+        }
     }
 
     private static string FormatTypeName(Type type)

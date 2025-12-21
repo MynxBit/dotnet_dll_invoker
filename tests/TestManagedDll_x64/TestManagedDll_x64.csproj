@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- FORCE 64-BIT -->
+    <PlatformTarget>x64</PlatformTarget>
+  </PropertyGroup>
+
+</Project>

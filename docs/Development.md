@@ -66,6 +66,12 @@ Requires .NET Runtime installed. Tiny size (~3MB).
 dotnet publish ui/DotNetDllInvoker.UI/DotNetDllInvoker.UI.csproj -c Release -r win-x64 -p:SelfContained=false -p:PublishSingleFile=true -o bin/Publish_Light
 ```
 
+### C. CLI Release (Silent Mode)
+Headless build for automation.
+```powershell
+dotnet publish cli/DotNetDllInvoker.CLI/DotNetDllInvoker.CLI.csproj -c Release -r win-x64 --self-contained -p:PublishSingleFile=true -o bin/Publish_CLI
+```
+
 ---
 
 ## 4. Contributing
