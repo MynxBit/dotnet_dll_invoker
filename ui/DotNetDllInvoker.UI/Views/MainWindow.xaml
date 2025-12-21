@@ -36,8 +36,21 @@
                               Content="🕵️ Stealth Mode" 
                               Foreground="{StaticResource TextSecondary}" 
                               VerticalAlignment="Center" 
-                              Margin="0,0,15,0"
-                              ToolTip="Route invocations through a pre-warmed CLI worker for minimal process noise"/>
+                              Margin="0,0,15,0">
+                        <CheckBox.ToolTip>
+                            <ToolTip>
+                                <TextBlock>
+                                    <Run FontWeight="Bold" Text="Stealth Mode (V14)" />
+                                    <LineBreak />
+                                    <Run Text="Routes execution to a separate pre-warmed worker process." />
+                                    <LineBreak />
+                                    <Run Text="• Prevents UI crashes (e.g., Environment.Exit)" />
+                                    <LineBreak />
+                                    <Run Text="• Isolates potentially malicious side effects" />
+                                </TextBlock>
+                            </ToolTip>
+                        </CheckBox.ToolTip>
+                    </CheckBox>
                     <TextBlock Text="v14.0" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
