@@ -54,11 +54,19 @@ public class Program
             return;
         }
 
-        // V14: Server Mode for Stealth Invocation
+        // V14: Server Mode for Stealth Invocation (Legacy/Alternative)
         if (args.Length > 0 && args[0] == "--server")
         {
             await RunServerMode();
             return;
+        }
+
+        // V15: One-Shot Execution Mode (Low Noise / Isolation)
+        if (args.Length > 2 && args[0] == "--exec")
+        {
+             // usage: --exec <DllPath> <MethodName> [Args...]
+             await RunOneShotMode(args[1], args[2], args.Skip(3).ToArray());
+             return;
         }
 
         CliRenderer.WriteHeader();
@@ -93,6 +101,54 @@ public class Program
         
         // Cleanup
         _dispatcher.UnloadAll();
+    }
+
+    /// <summary>
+    /// One-Shot Mode: Loads DLL, Invokes Method, Prints Result, Exits.
+    /// Ensures perfect process isolation for V15 Low Noise Mode.
+    /// </summary>
+    private static async Task RunOneShotMode(string dllPath, string methodName, string[] args)
+    {
+        try
+        {
+            // 1. Load
+            _dispatcher.LoadAssembly(dllPath);
+
+            // 2. Invoke
+            // Use a stopwatch to measure purely the invocation time (excluding startup)
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            var result = await _dispatcher.InvokeMethod(methodName, args, CancellationToken.None);
+            sw.Stop();
+
+            // 3. Output JSON
+            var serverResult = new ServerResult
+            {
+                Success = result.IsSuccess,
+                ReturnValue = result.ReturnValue?.ToString(),
+                Stdout = result.CapturedStdOut,
+                Stderr = result.CapturedStdErr,
+                Error = result.Error?.Message,
+                DurationMs = sw.ElapsedMilliseconds
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(serverResult);
+            Console.WriteLine(json);
+        }
+        catch (Exception ex)
+        {
+            // Fallback error JSON
+            var errorResult = new ServerResult
+            {
+                Success = false,
+                Error = ex.Message,
+                DurationMs = 0
+            };
+            Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(errorResult));
+        }
+        finally
+        {
+            _dispatcher.UnloadAll();
+        }
     }
 
     /// <summary>

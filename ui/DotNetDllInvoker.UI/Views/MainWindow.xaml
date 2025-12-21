@@ -33,17 +33,6 @@
                 <!-- Right Side Info -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <CheckBox IsChecked="{Binding IsStealthModeEnabled}" 
-                              Content="🕵️ Stealth Mode" 
-                              Foreground="{StaticResource TextSecondary}" 
-                              VerticalAlignment="Center" 
-                              Margin="0,0,15,0">
-                        <CheckBox.ToolTip>
-                            <ToolTip>
-                                <TextBlock>
-                                    <Run FontWeight="Bold" Text="Stealth Mode (V14)" />
-                                    <LineBreak />
-                                    <Run Text="Routes execution to a separate pre-warmed worker process." />
-                                    <LineBreak />
                                     <Run Text="• Prevents UI crashes (e.g., Environment.Exit)" />
                                     <LineBreak />
                                     <Run Text="• Isolates potentially malicious side effects" />

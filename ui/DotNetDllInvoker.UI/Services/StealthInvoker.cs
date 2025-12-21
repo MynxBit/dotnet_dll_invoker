@@ -5,32 +5,27 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //
 // PRIMARY RESPONSIBILITY:
-//   Manages the lifecycle and communication of the pre-warmed CLI worker process for Stealth Mode.
+//   Manages the "Low Noise" (formerly Stealth) invocation strategy.
+//   Spawns a FRESH CLI process for *every* invocation to ensure perfect isolation.
 //
 // SECONDARY RESPONSIBILITIES:
-//   - JSON-based IPC serialization/deserialization.
-//   - Process start/stop/kill management.
+//   - JSON-based Output parsing.
+//   - Process argument construction.
 //
 // NON-RESPONSIBILITIES:
-//   - Execution logic (that happens in the CLI process).
-//   - UI presentation (that happens in ViewModels).
-//
-// ───────────────────────────────────────────────────────────────────────────
-// DEPENDENCIES:
-//   - System.Diagnostics.Process -> For spawning the CLI worker.
-//   - DotNetDllInvoker.Results.InvocationResult -> For returning structured data.
-//
-// DEPENDENTS:
-//   - MainViewModel -> Uses this to execute methods when Stealth Mode is on.
+//   - Persistent process management (Removed in V15).
 //
 // ───────────────────────────────────────────────────────────────────────────
 // CHANGE LOG:
-//   2025-12-21 - Antigravity - Created service for V14 Stealth Mode.
+//   2025-12-21 - Antigravity - Refactored for V15 Low Noise Mode (One-Shot Isolation).
 // ═══════════════════════════════════════════════════════════════════════════
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using DotNetDllInvoker.Results;
@@ -39,16 +34,14 @@ namespace DotNetDllInvoker.UI.Services;
 
 public class StealthInvoker : IDisposable
 {
-    private Process? _workerProcess;
-    private StreamWriter? _stdin;
-    private StreamReader? _stdout;
-    private bool _isReady;
+    // In One-Shot mode, this captures the PID of the MOST RECENT execution.
+    // Useful for validation ("See, it ran as PID 1234").
+    private int _lastWorkerPid = -1;
 
     /// <summary>
-    /// Gets the Process ID of the active worker, or -1 if not running.
+    /// Gets the Process ID of the last active worker.
     /// </summary>
-    public int WorkerPid => _workerProcess?.Id ?? -1;
-
+    public int WorkerPid => _lastWorkerPid;
 
     /// <summary>
     /// Gets the path to the CLI executable (same directory, matching bitness).
@@ -75,79 +68,84 @@ public class StealthInvoker : IDisposable
     }
 
     /// <summary>
-    /// Starts the worker process if not already running.
-    /// </summary>
-    public async Task EnsureStartedAsync()
-    {
-        if (_isReady && _workerProcess != null && !_workerProcess.HasExited)
-            return;
-
-        var cliPath = GetCliPath();
-
-        _workerProcess = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = cliPath,
-                Arguments = "--server",
-                UseShellExecute = false,
-                RedirectStandardInput = true,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true
-            }
-        };
-
-        _workerProcess.Start();
-        _stdin = _workerProcess.StandardInput;
-        _stdout = _workerProcess.StandardOutput;
-
-        // Wait for READY signal
-        var ready = await _stdout.ReadLineAsync();
-        if (ready != "READY")
-        {
-            throw new InvalidOperationException($"Worker did not signal READY. Got: {ready}");
-        }
-
-        _isReady = true;
-    }
-
-    /// <summary>
-    /// Invokes a method via the worker process.
+    /// Invokes a method by spawning a fresh CLI process (One-Shot).
     /// </summary>
     public async Task<InvocationResult> InvokeAsync(string dllPath, string methodName, string[] args)
     {
-        await EnsureStartedAsync();
-
-        var command = new
+        var cliPath = GetCliPath();
+        
+        // Construct Arguments: --exec "dllPath" "methodName" "arg1" "arg2"
+        // Note: We use a list to let .NET handle escaping if possible, but ProcessStartInfo.Arguments is string in older .NET.
+        // We will construct the string carefully manually for max campatibility.
+        
+        var sb = new StringBuilder();
+        sb.Append("--exec ");
+        sb.Append(Quote(dllPath)).Append(' ');
+        sb.Append(Quote(methodName));
+        
+        if (args != null)
         {
-            action = "invoke",
-            path = dllPath,
-            method = methodName,
-            args = args
+            foreach (var arg in args)
+            {
+                sb.Append(' ').Append(Quote(arg));
+            }
+        }
+
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = cliPath,
+            Arguments = sb.ToString(),
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true
         };
 
-        var json = JsonSerializer.Serialize(command);
-        await _stdin!.WriteLineAsync(json);
-        await _stdin.FlushAsync();
-
-        var responseLine = await _stdout!.ReadLineAsync();
-        if (string.IsNullOrEmpty(responseLine))
-        {
-            return InvocationResult.Failure(
-                new InvocationError { Code = "WORKER_ERROR", Message = "No response from worker" },
-                TimeSpan.Zero);
-        }
+        using var process = new Process { StartInfo = startInfo };
+        
+        var outputBuilder = new StringBuilder();
+        
+        process.OutputDataReceived += (s, e) => 
+        { 
+            if (e.Data != null) outputBuilder.AppendLine(e.Data); 
+        };
 
         try
         {
+            process.Start();
+            _lastWorkerPid = process.Id; // Capture PID for UI feedback
+            
+            process.BeginOutputReadLine();
+            
+            // Wait for exit asynchronously
+            await process.WaitForExitAsync();
+            
+            var output = outputBuilder.ToString();
+            
+            // The last line of output should be the JSON result.
+            // Previous lines might be "Loaded assembly...", etc.
+            // We need to find the JSON line.
+            
+            var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var jsonLine = lines.LastOrDefault(l => l.Trim().StartsWith("{") && l.Trim().EndsWith("}"));
+
+            if (jsonLine == null)
+            {
+                // Fallback: Check Stderr
+                var stderr = await process.StandardError.ReadToEndAsync();
+                return InvocationResult.Failure(
+                    new InvocationError { Code = "CLI_ERROR", Message = $"CLI produced no JSON result.\nStdOut: {output}\nStdErr: {stderr}" },
+                    TimeSpan.Zero);
+            }
+
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-            var response = JsonSerializer.Deserialize<WorkerResponse>(responseLine, options);
+            var response = JsonSerializer.Deserialize<WorkerResponse>(jsonLine, options);
+
             if (response == null)
             {
                 return InvocationResult.Failure(
-                    new InvocationError { Code = "PARSE_ERROR", Message = "Failed to parse worker response" },
-                    TimeSpan.Zero);
+                   new InvocationError { Code = "PARSE_ERROR", Message = "Failed to parse CLI response" },
+                   TimeSpan.Zero);
             }
 
             if (response.Success)
@@ -165,41 +163,24 @@ public class StealthInvoker : IDisposable
                     TimeSpan.FromMilliseconds(response.DurationMs));
             }
         }
-        catch (JsonException ex)
+        catch (Exception ex)
         {
-            return InvocationResult.Failure(
-                new InvocationError { Code = "JSON_ERROR", Message = ex.Message },
+             return InvocationResult.Failure(
+                new InvocationError { Code = "EXEC_ERROR", Message = ex.Message },
                 TimeSpan.Zero);
         }
     }
 
-    /// <summary>
-    /// Shuts down the worker process gracefully.
-    /// </summary>
-    public void Shutdown()
+    private static string Quote(string text)
     {
-        if (_stdin != null && _workerProcess != null && !_workerProcess.HasExited)
-        {
-            try
-            {
-                _stdin.WriteLine("{\"action\":\"exit\"}");
-                _stdin.Flush();
-                _workerProcess.WaitForExit(1000);
-            }
-            catch { }
-        }
-
-        _workerProcess?.Kill();
-        _workerProcess?.Dispose();
-        _workerProcess = null;
-        _stdin = null;
-        _stdout = null;
-        _isReady = false;
+        // Simple quoting for CLI args
+        if (string.IsNullOrEmpty(text)) return "\"\"";
+        return "\"" + text.Replace("\"", "\\\"") + "\"";
     }
 
     public void Dispose()
     {
-        Shutdown();
+        // No persistent resources to dispose in V15
     }
 
     private class WorkerResponse

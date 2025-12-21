@@ -499,7 +499,7 @@ public class MainViewModel : ViewModelBase, IDisposable
             if (result.IsSuccess)
             {
                 if (IsStealthModeEnabled)
-                    StatusText = $"Invocation Complete via CLI Worker (PID: {_stealthInvoker.WorkerPid})";
+                    StatusText = $"Invocation Complete (One-Shot CLI PID: {_stealthInvoker.WorkerPid})";
                 else
                     StatusText = "Invocation Complete (Direct Mode)";
             }
