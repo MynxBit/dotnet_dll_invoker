@@ -13,6 +13,12 @@ public partial class MainWindow : Window
         InitializeComponent();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        base.OnClosed(e);
+        (DataContext as IDisposable)?.Dispose();
+    }
+
     private void OnDllDragOver(object sender, DragEventArgs e)
     {
         if (e.Data.GetDataPresent(DataFormats.FileDrop))

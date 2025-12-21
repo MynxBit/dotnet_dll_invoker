@@ -45,7 +45,7 @@ using Microsoft.Win32;
 
 namespace DotNetDllInvoker.UI.ViewModels;
 
-public class MainViewModel : ViewModelBase
+public class MainViewModel : ViewModelBase, IDisposable
 {
     private readonly CommandDispatcher _dispatcher;
     private readonly Services.RecentFilesService _recentFilesService;
@@ -59,6 +59,12 @@ public class MainViewModel : ViewModelBase
     private ResultViewModel? _lastResult;
 
     private string _windowTitle = "DotNet DLL Invoker";
+
+    public void Dispose()
+    {
+        _stealthInvoker?.Dispose();
+        _dispatcher?.UnloadAll();
+    }
 
     public MainViewModel()
     {
