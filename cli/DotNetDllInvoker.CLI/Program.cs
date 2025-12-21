@@ -112,7 +112,8 @@ public class Program
                 if (string.IsNullOrEmpty(line)) continue;
 
                 // Parse JSON command
-                var cmd = System.Text.Json.JsonSerializer.Deserialize<ServerCommand>(line);
+                var options = new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var cmd = System.Text.Json.JsonSerializer.Deserialize<ServerCommand>(line, options);
                 if (cmd == null) continue;
 
                 if (cmd.Action == "exit")
