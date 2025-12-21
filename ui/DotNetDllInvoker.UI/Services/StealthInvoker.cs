@@ -141,7 +141,8 @@ public class StealthInvoker : IDisposable
 
         try
         {
-            var response = JsonSerializer.Deserialize<WorkerResponse>(responseLine);
+            var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            var response = JsonSerializer.Deserialize<WorkerResponse>(responseLine, options);
             if (response == null)
             {
                 return InvocationResult.Failure(

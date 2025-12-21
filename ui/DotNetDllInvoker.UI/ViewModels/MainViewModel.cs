@@ -431,12 +431,12 @@ public class MainViewModel : ViewModelBase
                 result = await _stealthInvoker.InvokeAsync(dllPath, methodVM.Name, stringArgs);
 
                 // ENHANCEMENT: Prepend Stealth Metadata to Output for filtering
-                var debugHeader = $"""
+                var debugHeader = $$"""
                     --------------------------------------------------------------------------------
                     [STEALTH MODE EXECUTION]
-                    • Worker Process: DotNetDllInvoker.CLI.exe (PID: {_stealthInvoker.WorkerPid})
-                    • Payload: {{ action: "invoke", method: "{methodVM.Name}", args: [{string.Join(", ", stringArgs)}] }}
-                    • Tip: Filter Process Monitor by PID {_stealthInvoker.WorkerPid} to isolate behavior.
+                    • Worker Process: DotNetDllInvoker.CLI.exe (PID: {{_stealthInvoker.WorkerPid}})
+                    • Payload: { action: "invoke", method: "{{methodVM.Name}}", args: [{{string.Join(", ", stringArgs)}}] }
+                    • Tip: Filter Process Monitor by PID {{_stealthInvoker.WorkerPid}} to isolate behavior.
                     --------------------------------------------------------------------------------
                     
                     """;
@@ -450,7 +450,7 @@ public class MainViewModel : ViewModelBase
                 {
                     result = DotNetDllInvoker.Results.InvocationResult.Success(
                         result.ReturnValue, 
-                        result.ExecutionDuration, 
+                        result.Duration, 
                         newStdout, 
                         result.CapturedStdErr);
                 }
@@ -458,7 +458,7 @@ public class MainViewModel : ViewModelBase
                 {
                      result = DotNetDllInvoker.Results.InvocationResult.Failure(
                         result.Error!, 
-                        result.ExecutionDuration, 
+                        result.Duration, 
                         newStdout, 
                         result.CapturedStdErr);
                 }
@@ -490,7 +490,17 @@ public class MainViewModel : ViewModelBase
 
             // 3. Show Result
             LastResult = new ResultViewModel(result);
-            StatusText = result.IsSuccess ? "Invocation Complete" : "Invocation Failed";
+            if (result.IsSuccess)
+            {
+                if (IsStealthModeEnabled)
+                    StatusText = $"Invocation Complete via CLI Worker (PID: {_stealthInvoker.WorkerPid})";
+                else
+                    StatusText = "Invocation Complete (Direct Mode)";
+            }
+            else
+            {
+                StatusText = "Invocation Failed";
+            }
         }
         catch (Exception ex)
         {
