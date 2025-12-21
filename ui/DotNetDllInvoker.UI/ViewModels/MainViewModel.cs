@@ -429,6 +429,39 @@ public class MainViewModel : ViewModelBase
 
                 var dllPath = _selectedAssembly?.FilePath ?? "";
                 result = await _stealthInvoker.InvokeAsync(dllPath, methodVM.Name, stringArgs);
+
+                // ENHANCEMENT: Prepend Stealth Metadata to Output for filtering
+                var debugHeader = $"""
+                    --------------------------------------------------------------------------------
+                    [STEALTH MODE EXECUTION]
+                    • Worker Process: DotNetDllInvoker.CLI.exe (PID: {_stealthInvoker.WorkerPid})
+                    • Payload: {{ action: "invoke", method: "{methodVM.Name}", args: [{string.Join(", ", stringArgs)}] }}
+                    • Tip: Filter Process Monitor by PID {_stealthInvoker.WorkerPid} to isolate behavior.
+                    --------------------------------------------------------------------------------
+                    
+                    """;
+
+                // Reconstruct result with prepended header
+                var newStdout = debugHeader + (result.CapturedStdOut ?? "");
+                // We have to use reflection or create a new result because properties are immutable?
+                // InvocationResult is likely immutable. Let's create a new Success/Failure clone.
+                
+                if (result.IsSuccess)
+                {
+                    result = DotNetDllInvoker.Results.InvocationResult.Success(
+                        result.ReturnValue, 
+                        result.ExecutionDuration, 
+                        newStdout, 
+                        result.CapturedStdErr);
+                }
+                else
+                {
+                     result = DotNetDllInvoker.Results.InvocationResult.Failure(
+                        result.Error!, 
+                        result.ExecutionDuration, 
+                        newStdout, 
+                        result.CapturedStdErr);
+                }
             }
             else
             {

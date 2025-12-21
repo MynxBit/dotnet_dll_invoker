@@ -45,6 +45,12 @@ public class StealthInvoker : IDisposable
     private bool _isReady;
 
     /// <summary>
+    /// Gets the Process ID of the active worker, or -1 if not running.
+    /// </summary>
+    public int WorkerPid => _workerProcess?.Id ?? -1;
+
+
+    /// <summary>
     /// Gets the path to the CLI executable (same directory, matching bitness).
     /// </summary>
     private static string GetCliPath()
