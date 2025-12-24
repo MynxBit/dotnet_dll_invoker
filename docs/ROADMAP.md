@@ -4,7 +4,7 @@ This document tracks features identified during Gap Analysis that are slated for
 
 ## Completed Features ✅
 
-### V14.0: Stealth Mode
+### v16.0: Stealth Mode
 *   **Status**: ✅ **Completed**
 *   **Solution**: Added Pre-Warmed Worker Process architecture. UI spawns CLI with `--server` flag, communicates via stdin/stdout JSON. After first invocation, subsequent calls generate ZERO runtime noise.
 
@@ -40,14 +40,14 @@ This document tracks features identified during Gap Analysis that are slated for
 *   **Current Limit**: Every "Invoke" creates a fresh instance.
 *   **Proposed Solution**: "Keep Alive" checkbox to reuse instances across calls.
 
-### 3. Native CLR Host (V15?)
+### 3. Native CLR Host (v16?)
 *   **Feature**: C++ native loader for absolute zero noise from first invocation.
 *   **Status**: 🔮 Planned (if user demand exists)
 
 ---
 
 ## 🚀 Version History
-*   **V14.0**: Stealth Mode (Pre-Warmed Worker Process).
+*   **v16.0**: Stealth Mode (Pre-Warmed Worker Process).
 *   **V13.3**: Architecture Detection.
 *   **V13.2**: Generics Fix, Stego Support, CLI Silent Mode.
 *   **V13.1**: Decompilation Restored (Safe Mode).

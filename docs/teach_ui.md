@@ -157,7 +157,7 @@ ui/DotNetDllInvoker.UI/
 │
 ├── Services/
 │   ├── RecentFilesService.cs   # Persists recently opened DLLs
-│   └── StealthInvoker.cs       # V14: Manages pre-warmed CLI worker
+│   └── StealthInvoker.cs       # v16: Manages pre-warmed CLI worker
 │
 └── Themes/
     ├── DarkTheme.xaml          # Dark mode colors & styles
@@ -262,7 +262,7 @@ public class RelayCommand : ICommand
 | `SelectedMethod` | `MethodViewModel?` | ListBox.SelectedItem | Currently selected method |
 | `StatusText` | `string` | TextBlock.Text | Status bar message |
 | `IsBusy` | `bool` | ProgressBar.IsVisible | Loading indicator |
-| `IsStealthModeEnabled` | `bool` | CheckBox.IsChecked | V14: Enables pre-warmed worker |
+| `IsStealthModeEnabled` | `bool` | CheckBox.IsChecked | v16: Enables pre-warmed worker |
 | `LastResult` | `ResultViewModel?` | Result panel | Last invocation result |
 | `Dependencies` | `ObservableCollection<DependencyRecord>` | ListView.ItemsSource | Dependencies panel |
 

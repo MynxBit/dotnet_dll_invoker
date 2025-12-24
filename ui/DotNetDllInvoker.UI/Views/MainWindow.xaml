@@ -33,14 +33,12 @@
                 <!-- Right Side Info -->
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
                     <CheckBox IsChecked="{Binding IsStealthModeEnabled}" 
-                                    <Run Text="• Prevents UI crashes (e.g., Environment.Exit)" />
-                                    <LineBreak />
-                                    <Run Text="• Isolates potentially malicious side effects" />
-                                </TextBlock>
-                            </ToolTip>
-                        </CheckBox.ToolTip>
-                    </CheckBox>
-                    <TextBlock Text="v14.0" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
+                          Content="🛡️ Low Noise Mode" 
+                          Foreground="{StaticResource TextSecondary}" 
+                          VerticalAlignment="Center" 
+                          Margin="0,0,15,0"
+                          ToolTip="Isolation Mode: Spawns a fresh CLI process for every invocation. Zero persistent noise."/>
+                    <TextBlock Text="v16.0" Foreground="{StaticResource TextMuted}" VerticalAlignment="Center"/>
                 </StackPanel>
             </DockPanel>
         </Border>

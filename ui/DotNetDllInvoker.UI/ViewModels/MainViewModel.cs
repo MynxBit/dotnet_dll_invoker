@@ -19,7 +19,7 @@
 // ───────────────────────────────────────────────────────────────────────────
 // DEPENDENCIES:
 //   - DotNetDllInvoker.Core.CommandDispatcher -> Backend API.
-//   - DotNetDllInvoker.UI.Services.StealthInvoker -> V14 Stealth Service.
+//   - DotNetDllInvoker.UI.Services.StealthInvoker -> v16 Stealth Service.
 //
 // DEPENDENTS:
 //   - MainWindow.xaml -> DataBinding target.
@@ -70,7 +70,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     {
         // Load default title with bitness
         string bitness = Environment.Is64BitProcess ? "x64" : "x86";
-        WindowTitle = $"DotNet DLL Invoker (v14.0) - Process: {bitness}";
+        WindowTitle = $"DotNet DLL Invoker (v16.0) - Process: {bitness}";
 
         // Composition Root: Use CommandDispatcher's internal composition for simplicity
         _dispatcher = new CommandDispatcher();
@@ -157,7 +157,7 @@ public class MainViewModel : ViewModelBase, IDisposable
     }
 
     /// <summary>
-    /// V14: When enabled, method invocation is routed through a pre-warmed CLI worker process
+    /// v16: When enabled, method invocation is routed through a pre-warmed CLI worker process
     /// for minimal process noise during analysis.
     /// </summary>
     public bool IsStealthModeEnabled
@@ -422,7 +422,7 @@ public class MainViewModel : ViewModelBase, IDisposable
 
             if (IsStealthModeEnabled)
             {
-                // V14: Route through pre-warmed CLI worker for minimal noise
+                // v16: Route through pre-warmed CLI worker for minimal noise
                 StatusText = $"[Stealth] Invoking {methodVM.Name}...";
                 
                 // Serialize args to strings for CLI
@@ -437,10 +437,12 @@ public class MainViewModel : ViewModelBase, IDisposable
                 result = await _stealthInvoker.InvokeAsync(dllPath, methodVM.Name, stringArgs);
 
                 // ENHANCEMENT: Prepend Stealth Metadata to Output for filtering
-                var debugHeader = $$"""
+                string bitness = Environment.Is64BitProcess ? "x64" : "x86";
+                    string procName = $"DotNetDllInvoker.CLI.{bitness}.exe";
+                    var debugHeader = $$"""
                     --------------------------------------------------------------------------------
                     [STEALTH MODE EXECUTION]
-                    • Worker Process: DotNetDllInvoker.CLI.exe (PID: {{_stealthInvoker.WorkerPid}})
+                    • Worker Process: {{procName}} (PID: {{_stealthInvoker.WorkerPid}})
                     • Payload: { action: "invoke", method: "{{methodVM.Name}}", args: [{{string.Join(", ", stringArgs)}}] }
                     • Tip: Filter Process Monitor by PID {{_stealthInvoker.WorkerPid}} to isolate behavior.
                     --------------------------------------------------------------------------------

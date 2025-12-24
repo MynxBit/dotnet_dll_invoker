@@ -144,7 +144,7 @@ In .NET Core/.NET 5+:
 
 There is **NO WAY to prevent** a loaded assembly from calling `Environment.Exit()`.
 
-### The Solution: Stealth Mode (V14)
+### The Solution: Stealth Mode (v16)
 
 Run untrusted DLLs via the **Pre-Warmed Worker Process**:
 ```

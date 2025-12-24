@@ -42,7 +42,7 @@
 
 | Limitation | Status | Workaround |
 |------------|--------|------------|
-| Instance methods | ⚠️ New instance each call | No object persistence (Planned V15) |
+| Instance methods | ⚠️ New instance each call | No object persistence (Planned v16) |
 | Property getters/setters | ⚠️ Treated as methods | Works but verbose |
 | Extension methods | ⚠️ Listed under static type | Invoke with this param |
 | Operator overloads | ❌ Not visible | Not discoverable |
@@ -52,13 +52,13 @@
 
 | Attack | Prevention | Effect |
 |--------|------------|--------|
-| Environment.Exit() | ✅ **SOLVED (V14)** | UI survives (Stealth Mode) |
-| Environment.FailFast() | ✅ **SOLVED (V14)** | UI survives (Stealth Mode) |
-| StackOverflowException | ✅ **SOLVED (V14)** | UI survives (Stealth Mode) |
-| OutOfMemoryException | ✅ **SOLVED (V14)** | UI survives (Stealth Mode) |
-| Static constructor side effects | ✅ **SOLVED (V14)** | Runs in CLI worker, not UI |
-| Process name detection | ⚠️ PARTIAL (V14) | Malware sees `DotNetDllInvoker.CLI` |
-| Call stack inspection | ⚠️ PARTIAL (V14) | Malware sees generic host stack |
+| Environment.Exit() | ✅ **SOLVED (v16)** | UI survives (Stealth Mode) |
+| Environment.FailFast() | ✅ **SOLVED (v16)** | UI survives (Stealth Mode) |
+| StackOverflowException | ✅ **SOLVED (v16)** | UI survives (Stealth Mode) |
+| OutOfMemoryException | ✅ **SOLVED (v16)** | UI survives (Stealth Mode) |
+| Static constructor side effects | ✅ **SOLVED (v16)** | Runs in CLI worker, not UI |
+| Process name detection | ⚠️ PARTIAL (v16) | Malware sees `DotNetDllInvoker.CLI` |
+| Call stack inspection | ⚠️ PARTIAL (v16) | Malware sees generic host stack |
 
 ### 5. Dependency Analysis Limitations
 

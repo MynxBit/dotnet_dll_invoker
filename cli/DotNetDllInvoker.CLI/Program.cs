@@ -26,7 +26,7 @@
 //
 // ───────────────────────────────────────────────────────────────────────────
 // CHANGE LOG:
-//   2025-12-21 - Antigravity - Added --server mode for V14 Stealth Invocation.
+//   2025-12-21 - Antigravity - Added --server mode for v16 Stealth Invocation.
 // ═══════════════════════════════════════════════════════════════════════════
 
 using System;
@@ -54,14 +54,14 @@ public class Program
             return;
         }
 
-        // V14: Server Mode for Stealth Invocation (Legacy/Alternative)
+        // v16: Server Mode for Stealth Invocation (Legacy/Alternative)
         if (args.Length > 0 && args[0] == "--server")
         {
             await RunServerMode();
             return;
         }
 
-        // V15: One-Shot Execution Mode (Low Noise / Isolation)
+        // v16: One-Shot Execution Mode (Low Noise / Isolation)
         if (args.Length > 2 && args[0] == "--exec")
         {
              // usage: --exec <DllPath> <MethodName> [Args...]
@@ -105,7 +105,7 @@ public class Program
 
     /// <summary>
     /// One-Shot Mode: Loads DLL, Invokes Method, Prints Result, Exits.
-    /// Ensures perfect process isolation for V15 Low Noise Mode.
+    /// Ensures perfect process isolation for v16 Low Noise Mode.
     /// </summary>
     private static async Task RunOneShotMode(string dllPath, string methodName, string[] args)
     {

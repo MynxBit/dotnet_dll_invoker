@@ -108,9 +108,9 @@ DotNetDllInvoker/
 *Thin wrapper + Stealth Server.*
 *   `CommandParser.cs`
 *   `CliRenderer.cs`
-*   **Server Mode (V14):** `--server` flag enters a JSON-based IPC loop for low-noise invocation.
+*   **Server Mode (v16):** `--server` flag enters a JSON-based IPC loop for low-noise invocation.
 
 ### ui/DotNetDllInvoker.UI
 *Presentation only.*
-*   **Stealth Mode (V14):** Toggle to route invocations through pre-warmed CLI worker.
+*   **Stealth Mode (v16):** Toggle to route invocations through pre-warmed CLI worker.
 *   **Rule:** UI must never call Invoke() directly. Only talks to `Core`.

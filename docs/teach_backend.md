@@ -797,7 +797,7 @@ flowchart TD
     Q --> R[Restore Console.Out/Error]
     R --> S[Display result in UI]
 
-### Flow 4: Stealth Invocation (V14)
+### Flow 4: Stealth Invocation (v16)
 
 ```mermaid
 flowchart TD

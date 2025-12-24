@@ -13,11 +13,11 @@
 //   - Process argument construction.
 //
 // NON-RESPONSIBILITIES:
-//   - Persistent process management (Removed in V15).
+//   - Persistent process management (Removed in v16).
 //
 // ───────────────────────────────────────────────────────────────────────────
 // CHANGE LOG:
-//   2025-12-21 - Antigravity - Refactored for V15 Low Noise Mode (One-Shot Isolation).
+//   2025-12-21 - Antigravity - Refactored for v16 Low Noise Mode (One-Shot Isolation).
 // ═══════════════════════════════════════════════════════════════════════════
 
 using System;
@@ -48,13 +48,15 @@ public class StealthInvoker : IDisposable
     /// </summary>
     private static string GetCliPath()
     {
-        var exeDir = AppContext.BaseDirectory;
+        // Fix for Single-File Publish: AppContext.BaseDirectory points to temp extraction folder.
+        // We need the location of the *actual* exe file the user clicked.
+        var exeDir = Path.GetDirectoryName(Environment.ProcessPath)!;
         var bitness = Environment.Is64BitProcess ? "x64" : "x86";
         
         // Try versioned name first, then fallback
         var candidates = new[]
         {
-            Path.Combine(exeDir, $"DotNetDllInvoker.CLI.{bitness}.v14.exe"),
+            Path.Combine(exeDir, $"DotNetDllInvoker.CLI.{bitness}.v16.exe"),
             Path.Combine(exeDir, $"DotNetDllInvoker.CLI.{bitness}.exe"),
             Path.Combine(exeDir, "DotNetDllInvoker.CLI.exe")
         };
@@ -180,7 +182,7 @@ public class StealthInvoker : IDisposable
 
     public void Dispose()
     {
-        // No persistent resources to dispose in V15
+        // No persistent resources to dispose in v16
     }
 
     private class WorkerResponse

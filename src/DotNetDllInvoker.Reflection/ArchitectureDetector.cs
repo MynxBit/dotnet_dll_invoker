@@ -25,7 +25,7 @@
 //
 // ───────────────────────────────────────────────────────────────────────────
 // CHANGE LOG:
-//   2025-12-21 - Antigravity - Created for V14 bitness compatibility checks.
+//   2025-12-21 - Antigravity - Created for v16 bitness compatibility checks.
 // ═══════════════════════════════════════════════════════════════════════════
 
 using System;
